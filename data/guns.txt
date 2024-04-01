@@ -1,0 +1,81 @@
+name pistol
+type rifle
+/lol
+size 3
+pic items\pistol.png 0,0,8,5,2,8,0
+imagen pic 0,0
+imagef pic 0,1
+bullet default
+sdvig 0,0
+param 0 0.5
+param 1 0.6
+param 2 2
+enemy 30
+box 20
+player
+enemydist 6
+end
+
+name pulem
+type rifle
+size 3
+pic items\pulem.png 0,0,9,5,2,9,0
+imagen pic 0,0
+imagef pic 0,1
+bullet default
+param 0 0.2
+param 1 0.8
+param 2 1
+box 30
+enemy 20
+end 
+
+name uzishka
+type uzi
+size 3
+pic items\uzi.png 0,0,10,9,2,10,0
+imagen pic 0,0
+imagef pic 0,1
+bullet minibullet
+param 0 0.05
+param 1 0.6
+param 2 1
+param 3 0.25
+param 4 30
+box 40
+enemydist 3
+enemy 30
+end 
+
+name super
+type rifle
+size 3
+pic items\plasmagun.png 0,0,15,8,2,15,0
+imagen pic 0,0
+imagef pic 0,1
+bullet plasmabullet
+param 0 1
+param 1 0.6
+param 2 4
+box 30
+enemy 20
+enemydist 10
+end 
+
+name crossbow
+type shotgun
+size 3
+pic items\crossbow.png 0,0,11,8,2,11,0
+imagen pic 0,1
+imagef pic 0,0
+bullet arrow
+param 0 0.7
+param 1 0.9
+param 2 2
+param 3 20
+param 4 0
+param 5 3
+box 30
+enemy 20
+enemydist 12
+end 
