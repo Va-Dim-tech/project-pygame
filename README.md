@@ -1,14 +1,3 @@
-requirments:
-для exe - нет
-для py исходника - pygame
-
-обязятельными для py исходника:
-директория data
-main.py
-loader.py
-game.py
-menu.py
-objects.py
-other.py
-textures.py
-vars.py
+это ветка с exe файлом
+exe файл был собран при помощи py2exe
+запуск файла происходит немного долго так как все ресурсы игры помещены в exe файл и py2exe их довольно доолго вытаскивает
