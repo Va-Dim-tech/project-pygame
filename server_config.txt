@@ -1,0 +1,8 @@
+port 55555
+max_players 10
+max_time 1
+kep_alive_time 1
+levels_count 3
+max_message_len 2000
+pinging_time 1
+dead_time 5

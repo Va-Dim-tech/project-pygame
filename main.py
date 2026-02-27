@@ -110,6 +110,9 @@ def doneload():
 
 def changescene(scn):
     print('chenging scene to', scn)
+    if all.scene != None:
+        all.scene.toscene()
+
     if scn == None or scn == 'menu':
         all.scene = all.menu
         all.menu.start()
@@ -121,6 +124,9 @@ def changescene(scn):
     elif scn == 'game':
         all.scene = all.game
         all.game.start()
+    elif scn == 'client':
+        all.scene = all.client
+        all.client.start()
     all.scene.drawer(0, all.screen)
 
 
@@ -137,6 +143,16 @@ def loadscene(scn):
                             'minibul', 'plasmabul', 'gamover', 'hint', 'arrow']
             all.hasload = True
         all.loading_scene = 'game'
+        changescene('loader')
+    if scn == 'client':
+        if not all.gametexturesload:
+            all.lastLoadId = 0
+            all.sumarLoad = 0
+            all.toloadids = ['wals', 'player', 'player parts', 'bullet',
+                            'enemy parts', 'boxes', 'heart', 'luck', 'test', 'gui',
+                            'minibul', 'plasmabul', 'gamover', 'hint', 'arrow']
+            all.hasload = True
+        all.loading_scene = 'client'
         changescene('loader')
 
 def updaterecord():
@@ -177,9 +193,11 @@ if __name__ == '__main__':
     from loader import loader
     from menu import menu
     from game import game
+    from client import client
     all.loader = loader()
     all.menu = menu()
     all.game = game()
+    all.client = client()
     all.eror = generateeror()
     print('imported')
 

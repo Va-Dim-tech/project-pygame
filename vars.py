@@ -21,6 +21,7 @@ class variables():
         self.xsiz = 600
         self.ysiz = 600
         self.game = None
+        self.client = None 
         self.eror = None
         self.threading = False
         self.threads = []

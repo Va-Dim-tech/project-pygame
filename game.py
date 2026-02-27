@@ -15,6 +15,9 @@ from other import load_multi_image
 from other import generateeror
 from objects import *
 
+
+eror = generateeror()
+
 class camera():
     def __init__(self):
         self.pos = pygame.Vector2(0, 0)
@@ -78,7 +81,8 @@ class camera():
     def renderentytis(self, delta, screen):
 
         for i in all.game.entitys:
-            self.renderentity(i, screen, delta)
+            if i != all.game.playerclass:
+                self.renderentity(i, screen, delta)
 
 
 
@@ -145,8 +149,8 @@ def generator(grid, gridsizx, gridsizy, labirintxcells, labirintycells):
                     grid[y][x] = wall(x, y)
                     
             if labirint[yl][xl][2]:
-                for i in range(labirintxcells):
-                    y, x = (yl * labirintycells + labirintycells - 1), (xl * labirintxcells + i)
+                for i in range(labirintxcells + 1):
+                    y, x = (yl * labirintycells + labirintycells - 1), (xl * labirintxcells + i - 1)
                     grid[y][x] = wall(x, y)
 
     for i in range(gridsizx):
@@ -212,7 +216,8 @@ def generator(grid, gridsizx, gridsizy, labirintxcells, labirintycells):
                 break
         if not flag:
             continue
-        all.game.entitys.append(enemy(path[i][0] * all.game.cellsizx, path[i][1] * all.game.cellsizy))
+        #all.game.add_gnerated_object(enemy(path[i][0] * all.game.cellsizx, path[i][1] * all.game.cellsizy))
+        
     for i in range(30):
         a = (randint(0, all.game.gridsizx), randint(0, all.game.gridsizy))
         if (startpos[0] - a[0])**2 + (startpos[1] - a[1]) ** 2 < 100:
@@ -225,7 +230,8 @@ def generator(grid, gridsizx, gridsizy, labirintxcells, labirintycells):
                 break
         if not flag:
             continue
-        all.game.entitys.append(enemy(a[0] * all.game.cellsizx, a[1] * all.game.cellsizy))
+        #all.game.add_gnerated_object(enemy(a[0] * all.game.cellsizx, a[1] * all.game.cellsizy))
+        
     all.game.grid[int(path[0][1] / all.game.cellsizy)][int(path[0][0] / all.game.cellsizx)] = luck(int(path[0][0] / all.game.cellsizx), int(path[0][1] / all.game.cellsizy))
     return startpos
     for yl in range(len(labirint)):
@@ -271,7 +277,7 @@ class game():
         self.playerhealpos = pygame.Vector2(0, 0)
         self.playerhealsdvg = pygame.Vector2(20, 20)
         self.state = 0
-        
+        self.players = []
 
     def gamower(self):
         print('gamover')
@@ -292,58 +298,86 @@ class game():
             for i in self.playerclass.coliscells:
                 i.mas.remove(self.playerclass)
 
+    def create_txtures_vars(self):
+        self.playerhead = eror
 
-    def start(self):
-        if not all.gametexturesload:
-            self.playerhead = pygame.transform.scale(textures['player parts'][1][0][0], (self.cellsizx + 4, self.cellsizy + 4))
-
-            self.playerfeet = [pygame.transform.scale(textures['player parts'][1][1][i], (self.cellsizx + 4, self.cellsizy - 21)) for i in range(3)]
-            self.playereye = pygame.transform.scale(textures['player parts'][1][2][0], (self.cellsizx - 20, self.cellsizy - 20))
-            self.playerarm = pygame.transform.scale(textures['player parts'][1][3][0], (self.cellsizx - 20, self.cellsizy - 20))
-            self.playerm = pygame.transform.scale(textures['player parts'][1][4][0], (self.cellsizx - 15, self.cellsizy - 21))
+        self.playerfeet = eror
+        self.playereye = eror
+        self.playerarm = eror
+        self.playerm = eror
         
-            self.enemyhead = pygame.transform.scale(textures['enemy parts'][1][0][0], (self.cellsizx + 4, self.cellsizy + 4))
-            self.enemyfeet = [pygame.transform.scale(textures['enemy parts'][1][1][i], (self.cellsizx + 4, self.cellsizy - 21)) for i in range(3)]
-            self.enemyeye = pygame.transform.scale(textures['enemy parts'][1][2][0], (self.cellsizx - 20, self.cellsizy - 20))
-            self.enemyarm = pygame.transform.scale(textures['enemy parts'][1][3][0], (self.cellsizx - 20, self.cellsizy - 20))
-            self.enemym = pygame.transform.scale(textures['enemy parts'][1][4][0], (self.cellsizx - 15, self.cellsizy - 21))
+        self.enemyhead = eror
+        self.enemyfeet = eror
+        self.enemyeye = eror
+        self.enemyarm = eror
+        self.enemym = eror
         
-            self.player = pygame.transform.scale(textures['player'][1], (self.cellsizx + 10, self.cellsizy + 10))
-            self.healheart = pygame.transform.scale(textures['heart'][1], (20, 20))
+        self.player = eror
+        self.healheart = eror
         
-            self.boxtexture = pygame.transform.scale(textures['boxes'][1][0][0], (self.cellsizx, self.cellsizy)) 
-            self.boxtexturefront = pygame.transform.scale(textures['boxes'][1][0][1], (self.cellsizx, self.cellsdvigy)) 
-            self.superboxtexture = pygame.transform.scale(textures['boxes'][1][0][2], (self.cellsizx, self.cellsizy)) 
-            self.superboxtexturefront = pygame.transform.scale(textures['boxes'][1][0][3], (self.cellsizx, self.cellsdvigy)) 
-            self.wall = pygame.transform.scale(textures['wals'][1][0][1], (self.cellsizx, self.cellsizy))
-            self.wallfront = pygame.transform.scale(textures['wals'][1][0][2], (self.cellsizx, self.cellsdvigy))
-            self.flor = pygame.transform.scale(textures['wals'][1][0][0], (self.cellsizx, self.cellsizy))
-            self.luck = pygame.transform.scale(textures['luck'][1], (self.cellsizx, self.cellsizy * 2))
-            self.test = pygame.transform.scale(textures['test'][1], (self.cellsizx / 2, self.cellsizy / 2))
-            self.gameoverscreen1 = pygame.transform.scale(textures['gamover'][1], (all.xsiz, all.ysiz))
-            self.gameoverscreen2 = pygame.transform.scale(textures['hint'][1], (all.xsiz, all.ysiz))
+        self.boxtexture = eror
+        self.boxtexturefront = eror
+        self.superboxtexture = eror
+        self.superboxtexturefront = eror
+        self.wall = eror
+        self.wallfront = eror
+        self.flor = eror
+        self.luck = eror
+        self.test = eror
+        self.gameoverscreen1 = eror
+        self.gameoverscreen2 = eror
+        self.bul = eror
 
-            siz = textures['bullet'][1].get_size()
-            siz = siz[0] * 1.7, siz[1] * 1.7
-            self.bul = pygame.transform.scale(textures['bullet'][1], siz)
+    def init_textures(self):
+        self.playerhead = pygame.transform.scale(textures['player parts'][1][0][0], (self.cellsizx + 4, self.cellsizy + 4))
 
-            self.movevec = pygame.Vector2(0, 0)
-            self.curvec = pygame.Vector2(all.xsiz / 2, all.ysiz / 2)
+        self.playerfeet = [pygame.transform.scale(textures['player parts'][1][1][i], (self.cellsizx + 4, self.cellsizy - 21)) for i in range(3)]
+        self.playereye = pygame.transform.scale(textures['player parts'][1][2][0], (self.cellsizx - 20, self.cellsizy - 20))
+        self.playerarm = pygame.transform.scale(textures['player parts'][1][3][0], (self.cellsizx - 20, self.cellsizy - 20))
+        self.playerm = pygame.transform.scale(textures['player parts'][1][4][0], (self.cellsizx - 15, self.cellsizy - 21))
+        
+        self.enemyhead = pygame.transform.scale(textures['enemy parts'][1][0][0], (self.cellsizx + 4, self.cellsizy + 4))
+        self.enemyfeet = [pygame.transform.scale(textures['enemy parts'][1][1][i], (self.cellsizx + 4, self.cellsizy - 21)) for i in range(3)]
+        self.enemyeye = pygame.transform.scale(textures['enemy parts'][1][2][0], (self.cellsizx - 20, self.cellsizy - 20))
+        self.enemyarm = pygame.transform.scale(textures['enemy parts'][1][3][0], (self.cellsizx - 20, self.cellsizy - 20))
+        self.enemym = pygame.transform.scale(textures['enemy parts'][1][4][0], (self.cellsizx - 15, self.cellsizy - 21))
+        
+        self.player = pygame.transform.scale(textures['player'][1], (self.cellsizx + 10, self.cellsizy + 10))
+        self.healheart = pygame.transform.scale(textures['heart'][1], (20, 20))
+        
+        self.boxtexture = pygame.transform.scale(textures['boxes'][1][0][0], (self.cellsizx, self.cellsizy)) 
+        self.boxtexturefront = pygame.transform.scale(textures['boxes'][1][0][1], (self.cellsizx, self.cellsdvigy)) 
+        self.superboxtexture = pygame.transform.scale(textures['boxes'][1][0][2], (self.cellsizx, self.cellsizy)) 
+        self.superboxtexturefront = pygame.transform.scale(textures['boxes'][1][0][3], (self.cellsizx, self.cellsdvigy)) 
+        self.wall = pygame.transform.scale(textures['wals'][1][0][1], (self.cellsizx, self.cellsizy))
+        self.wallfront = pygame.transform.scale(textures['wals'][1][0][2], (self.cellsizx, self.cellsdvigy))
+        self.flor = pygame.transform.scale(textures['wals'][1][0][0], (self.cellsizx, self.cellsizy))
+        self.luck = pygame.transform.scale(textures['luck'][1], (self.cellsizx, self.cellsizy * 2))
+        self.test = pygame.transform.scale(textures['test'][1], (self.cellsizx / 2, self.cellsizy / 2))
+        self.gameoverscreen1 = pygame.transform.scale(textures['gamover'][1], (all.xsiz, all.ysiz))
+        self.gameoverscreen2 = pygame.transform.scale(textures['hint'][1], (all.xsiz, all.ysiz))
+
+        siz = textures['bullet'][1].get_size()
+        siz = siz[0] * 1.7, siz[1] * 1.7
+        self.bul = pygame.transform.scale(textures['bullet'][1], siz)
+
+        self.movevec = pygame.Vector2(0, 0)
+        self.curvec = pygame.Vector2(all.xsiz / 2, all.ysiz / 2)
             
-            loader('guns.txt')
-            all.gametexturesload = True
+        loader('guns.txt')
+        all.gametexturesload = True
+
+    def initialazing_game(self):
+        self.playerclass = None
         self.state = 0
         self.newrecord = False
-        self.updatechances()
-        self.updatechancesbox()
-        print('start game')
         self.grid = []
         for y in range(self.gridsizy):
             ou = [None] * self.gridsizx
             for x in range(self.gridsizx):
                 ou[x] = flor(x, y)
             self.grid.append(ou)
-        
+        cam.start()
         for y in range(self.colisgrdsizy):
             ou = [None] * self.colisgrdsizx
             for x in range(self.colisgrdsizx):
@@ -352,16 +386,32 @@ class game():
                 ou[x].y = y * self.colisizy
             self.cgrid.append(ou)
 
+
+    def start(self):
+        if not all.gametexturesload:
+            self.init_textures()
+        self.updatechances()
+        self.updatechancesbox()
+
+
+
+        print('start game')
+
+        self.initialazing_game()
+        
+
+
         while len(self.entitys) > 0:
             a = self.entitys.pop()
             a.remover()
         self.lazyenemy = []
         self.lazyenid = 0
 
-        cam.start()
+        
         a = generator(self.grid, self.gridsizx, self.gridsizy, self.labirintcellx, self.labirintcelly)
         self.playerclass = player(x=a[0] * self.cellsizx + 10, y=a[1] * self.cellsizy + 10)
-        self.playerclass.cornpos.update(self.cellsizx, self.cellsizy)
+        
+        self.players = [self.playerclass]
         if self.playerweapon != None:
             self.playerclass.inventar[0] = self.playerweapon.construct()
 
@@ -370,27 +420,32 @@ class game():
 
 
     def eventer(self, event):
-        if event.type == pygame.MOUSEMOTION:
-            self.playerclass.cursorubdate(all.curpos - self.curvec)
+        if self.playerclass != None:
+            if event.type == pygame.MOUSEMOTION:
+                
+                self.playerclass.cursorubdate(all.curpos - self.curvec)
 
-        if event.type == pygame.MOUSEBUTTONUP:
-            self.playerclass.offclick()
+            if event.type == pygame.MOUSEBUTTONUP:
+                self.playerclass.offclick()
 
 
         if event.type == pygame.MOUSEBUTTONDOWN:
             if self.state == 0:
-                self.playerclass.onclick()
+                if self.playerclass != None:
+                    self.playerclass.onclick()
             elif self.state == 1:
                 main.changescene('menu')
         if event.type == pygame.KEYDOWN:
             if self.state == 0:
-                if event.key == settings['change']:
-                    self.playerclass.selected += 1
-                    if self.playerclass.selected >= 2:
-                        self.playerclass.selected = 0
-                elif event.key == settings['equip']:
-                    if self.playerclass.itemselected != None:
-                        self.playerclass.inventar[self.playerclass.selected], self.playerclass.itemselected.gun = self.playerclass.itemselected.gun, self.playerclass.inventar[self.playerclass.selected]
+                if self.playerclass != None:
+                    if event.key == settings['change']:
+                        self.playerclass.selected += 1
+                        if self.playerclass.selected >= 2:
+                            self.playerclass.selected = 0
+                    elif event.key == settings['equip']:
+                        if self.playerclass.itemselected != None:
+                            self.playerclass.equip()
+                        
             elif self.state == 1:
                 main.changescene('menu')
 
@@ -410,6 +465,11 @@ class game():
         cam.pos = self.playerclass.pos
 
 
+    def setcell(self, x, y, c):
+        if 0 <= x < self.gridsizx:
+            if 0 <= y < self.gridsizy:
+                self.grid[y][x] = c
+
     def getcell(self, x, y):
         if 0 <= x < self.gridsizx:
             if 0 <= y < self.gridsizy:
@@ -422,27 +482,33 @@ class game():
                 return self.cgrid[y][x]
         return None
 
+    def getplayers(self):
+        return self.players
+
+
     def drawer(self, dt, screen):
         cam.render(dt, screen)
         cam.renderentytis(dt, screen)
         if self.state == 0:
-            cam.renderentity(self.playerclass, screen, dt)
+            if self.playerclass != None:
+                cam.renderentity(self.playerclass, screen, dt)
         cam.renderafterentity(dt, screen)
         #ui drawing
         if self.state == 0:
-            for i in range(self.playerclass.health):
-                screen.blit(self.healheart, self.playerhealpos + (self.playerhealsdvg.x * (i % 15), self.playerhealsdvg.y * (i // 15)))
-            screen.blit(textures['gui'][1][0][0], (10, 50))
-            if self.playerclass.selected == 0:
-                screen.blit(textures['gui'][1][1][1], (15, 90))
-            screen.blit(textures['gui'][1][0][0], (60, 50))
-            if self.playerclass.selected == 1:
-                screen.blit(textures['gui'][1][1][1], (65, 90))
-            if self.playerclass.inventar[0] != None:
-                screen.blit(self.playerclass.inventar[0].image1, (20, 60))
+            if self.playerclass != None:
+                for i in range(self.playerclass.health):
+                    screen.blit(self.healheart, self.playerhealpos + (self.playerhealsdvg.x * (i % 15), self.playerhealsdvg.y * (i // 15)))
+                screen.blit(textures['gui'][1][0][0], (10, 50))
+                if self.playerclass.selected == 0:
+                    screen.blit(textures['gui'][1][1][1], (15, 90))
+                screen.blit(textures['gui'][1][0][0], (60, 50))
+                if self.playerclass.selected == 1:
+                    screen.blit(textures['gui'][1][1][1], (65, 90))
+                if self.playerclass.inventar[0] != None:
+                    screen.blit(self.playerclass.inventar[0].image1, (20, 60))
             
-            if self.playerclass.inventar[1] != None:
-                screen.blit(self.playerclass.inventar[1].image1, (70, 60))
+                if self.playerclass.inventar[1] != None:
+                    screen.blit(self.playerclass.inventar[1].image1, (70, 60))
         elif self.state == 1:
             screen.blit(self.gameoverscreen1, (0, 0))
             screen.blit(self.gameoverscreen2, (0, 0))
@@ -516,6 +582,8 @@ class game():
                 self.movevec.update(self.movevec.x, self.movevec.y - 1)
             if buttons[settings['down']]:
                 self.movevec.update(self.movevec.x, self.movevec.y + 1)
+
+            self.playerclass.wiewin = cam.pos + all.curpos
             self.playerclass.move(self.movevec)
             self.playerclass.ubdate(dt)
         
@@ -536,6 +604,16 @@ class game():
             self.lazyenid = -1
         else:
             self.lazyenemy[self.lazyenid].lazy()
+
+    def add_gnerated_object(self, obj):
+         self.entitys.append(obj)
+
+    def add_object(self, obj, *params, **kparams):
+        self.entitys.append(obj(*params, **kparams))
+        
+    def delete_object(self, obj):
+        obj.live = False
+        self.dodelete = True
 
     def doneload(self):
         pass
@@ -579,26 +657,32 @@ class gunsettings():
 class gun():
     def __init__(self, name):
         self.worker = None
-        self.image1 = None
-        self.image2 = None
-        self.usedim = None
+        self.image1 = eror
+        self.image2 = eror
+        self.usedim = eror
         self.bullet = bullet
         self.name = name
         self.sdvig = pygame.Vector2(0, 0)
         self.size = (0, 0)
         self.mirored = False
         self.fired = False
-        self.drawedim = None
+        self.drawedim = eror
         self.angle = 0
         self.enemdist = 6
+        self.net_params = ((False, False), ('image1', 'image2', 'fired'), ['name'])
 
     def rotate(self, angle):
-        self.drawedim = pygame.transform.rotate(self.usedim, angle)
+        if self.usedim != None:
+            self.drawedim = pygame.transform.rotate(self.usedim, angle)
         self.angle = angle
     
 
     def draw(self, screen, pos):
-        screen.blit(self.drawedim, self.sdvig + pos)
+        if self.drawedim != None:
+            screen.blit(self.drawedim, self.sdvig + pos)
+
+    def on_sync_get(self):
+        self.updateimage()
 
     def updateimage(self):
         if self.mirored:
@@ -643,8 +727,7 @@ class gun():
         vec = pygame.math.Vector2.normalize(vec)
         if dopangle != 0:
             vec = vec.rotate(dopangle)
-        all.game.entitys.append(self.bullet(vec, x=pos.x, y=pos.y, angle=self.angle + dopangle, ign=ovner, damage=dmg, igntype=ovner.type, **dopparams))
-
+        all.game.add_object(self.bullet, vec, x=pos.x, y=pos.y, angle=self.angle + dopangle, ign=ovner, damage=dmg, igntype=ovner.type, **dopparams)
 
 
 class logic():
@@ -656,6 +739,8 @@ class logic():
 
     def fire(self, pos, vec, ovner):
         pass
+
+
 
 
 
@@ -978,3 +1063,5 @@ def loader(name):
             all.game.playerweapon = contructor
         if forbox:
             all.game.boxitems.append(contructor)
+
+other_objects = [pygame.Vector2, pygame.Surface, gunsettings, gun, refile, uzi, shotgun, hert]

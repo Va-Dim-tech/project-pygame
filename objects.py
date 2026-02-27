@@ -40,7 +40,7 @@ class box(cell):
         self.txturefront = all.game.boxtexturefront
 
     def destroy(self):
-        all.game.grid[self.y][self.x] = flor(self.x, self.y)
+        all.game.setcell(self.x, self.y, flor(self.x, self.y))
 
 class flor(cell):
     def __init__(self, x=0, y=0):
@@ -59,7 +59,7 @@ class luck(cell):
         
 
 
-
+lastid = 0
 
 class superbox(cell):
     def __init__(self, x=0, y=0):
@@ -69,14 +69,15 @@ class superbox(cell):
         self.destr = True
         self.txturetop = all.game.superboxtexture
         self.txturefront = all.game.superboxtexturefront
+
         if randint(0, 1) == 0:
             self.item = hert()
         else:
             self.item = all.game.randomweapon(1)
 
     def destroy(self):
-        all.game.entitys.append(item(self.x * all.game.cellsizx, self.y * all.game.cellsizy, gun=self.item))
-        all.game.grid[self.y][self.x] = flor(self.x, self.y)
+        all.game.add_object(item, self.x * all.game.cellsizx, self.y * all.game.cellsizy, gun=self.item)
+        all.game.setcell(self.x, self.y, flor(self.x, self.y))
 
 class colisioncell():
     def __init__(self):
@@ -113,6 +114,7 @@ def collision(pos, cornpos, to):
 
 
 def tocolision(mas, pos, cornpos, entity):
+
     rem = True
     while rem:
         rem = False
@@ -128,6 +130,7 @@ def tocolision(mas, pos, cornpos, entity):
             if c != None and c not in mas:
                 mas.add(c)
                 c.mas.add(entity)
+                
 
 def poscolide(pos, ignor=None, typign=[], white=''):
     c = all.game.getcolcell(int((pos.x) // all.game.coliscelsizx), int((pos.y) // all.game.coliscelsizy))
@@ -169,9 +172,16 @@ def raycast(pos, vec, ignor=None, typign=[], white=''):
 
 class entity():
     def __init__(self, x=0, y=0):
+        global lastid
         self.live = True
         self.type = 'eror'
         self.pos = pygame.Vector2(x, y)
+        self.uuid = lastid
+        lastid += 1
+
+        self.sync = False
+        self.net_params = ((False, False), (), (), (False, True), ()) #has (server update, client update), (sync params) (creating params) (has sync var(0=no, 1=sync without sync pos, 2=sync with pos), need update, (client sync params))
+
 
     def drawer(self, screen, pos):
         pass
@@ -183,6 +193,16 @@ class entity():
         pass
     def remover(self):
         pass
+    def server_update(self, delta):
+        pass
+    def client_update(self, delta):
+        pass
+    def set_pos(self, x, y):
+        self.x = x
+        self.y = y 
+    def on_sync_get(self):
+        pass
+
 
 class bullet(entity):
     def __init__(self, vec, x=0, y=0, angle=0, ign=None, damage=0, igntype=''):
@@ -196,26 +216,30 @@ class bullet(entity):
         self.ignored = ign
         self.damage = damage
         self.ignoredtype = igntype
+        self.net_params = ((False, True), (), ['vec'], (False, True))
 
     def drawer(self, screen, pos):
         if not self.live:
             return # add deelte 
-        self.pos += self.vec * self.clc.tick()
+
+        screen.blit(self.rendered, pos)
+
+    def ubdate(self, delta):
+        self.pos += self.vec * delta
         c = all.game.getcell(int(self.pos.x // all.game.cellsizx), int(self.pos.y // all.game.cellsizy))
         if c == None or c.pos:
             if (not c == None) and c.destr:
                 c.destroy()
-                
-            self.live = False
-            all.game.dodelete = True
+            all.game.delete_object(self)
             return
         c = poscolide(self.pos, ignor=self.ignored, typign=[self.ignoredtype, 'item'])
         if c != None and c != self.ignored:
             c.hit(self.damage)
-            self.live = False
-            all.game.dodelete = True
+            all.game.delete_object(self)
             return
-        screen.blit(self.rendered, pos)
+    def client_update(self, delta):
+        self.pos += self.vec * delta
+
 
 class minibul(entity):
     def __init__(self, vec, x=0, y=0, angle=0, ign=None, damage=0, igntype='', tim=10):
@@ -231,32 +255,36 @@ class minibul(entity):
         self.ignoredtype = igntype
         self.timr = time()
         self.tim = tim
+        self.net_params = ((False, True), (), ['vec'], (False, True))
 
     def drawer(self, screen, pos):
 
         if not self.live:
             return # add deelte 
+
+        screen.blit(self.rendered, pos)
+
+    def ubdate(self, delta):
         if time() - self.timr > self.tim:
-            self.live = False
-            all.game.dodelete = True
+            all.game.delete_object(self)
             return
-        self.pos += self.vec * self.clc.tick()
+        self.pos += self.vec * delta
         c = all.game.getcell(int(self.pos.x // all.game.cellsizx), int(self.pos.y // all.game.cellsizy))
         if c == None or c.pos:
             if (not c == None) and c.destr:
                 c.destroy()
                 
-            self.live = False
-            all.game.dodelete = True
+            all.game.delete_object(self)
             return
         c = poscolide(self.pos, ignor=self.ignored, typign=[self.ignoredtype, 'item'])
         if c != None and c != self.ignored:
             c.hit(self.damage)
-            self.live = False
-            all.game.dodelete = True
+            all.game.delete_object(self)
             return
-        screen.blit(self.rendered, pos)
-
+    def client_update(self, delta):
+        if time() - self.timr > self.tim:    
+            return
+        self.pos += self.vec * delta
 
 class plasmabul(entity):
     def __init__(self, vec, x=0, y=0, angle=0, ign=None, damage=0, igntype=''):
@@ -270,27 +298,30 @@ class plasmabul(entity):
         self.ignored = ign
         self.damage = damage
         self.ignoredtype = igntype
+        self.net_params = ((False, True), (), ['vec'], (False, True))
 
     def drawer(self, screen, pos):
         if not self.live:
             return # add deelte 
-        self.pos += self.vec * self.clc.tick()
+        
+        screen.blit(self.rendered, pos)
+
+    def ubdate(self, delta):
+        self.pos += self.vec * delta
         c = all.game.getcell(int(self.pos.x // all.game.cellsizx), int(self.pos.y // all.game.cellsizy))
         if c == None or c.pos:
             if (not c == None) and c.destr:
                 c.destroy()
                 
-            self.live = False
-            all.game.dodelete = True
+            all.game.delete_object(self)
             return
         c = poscolide(self.pos, ignor=self.ignored, typign=[self.ignoredtype, 'item'])
         if c != None and c != self.ignored:
             c.hit(self.damage)
-            self.live = False
-            all.game.dodelete = True
+            all.game.delete_object(self)
             return
-        screen.blit(self.rendered, pos)
-
+    def client_update(self, delta):
+        self.pos += self.vec * delta
 arrowid = [0]
 lastarrowid = [0]
 
@@ -309,12 +340,17 @@ class arrow(entity):
         self.state = 0
         self.id = arrowid[0]
         arrowid[0] += 1
+        self.net_params = ((False, True), (), ['vec'], (False, True))
 
     def drawer(self, screen, pos):
         if not self.live:
             return # add deelte 
+
+        screen.blit(self.rendered, pos)
+
+    def ubdate(self, delta):
         if self.state == 0:
-            self.pos += self.vec * self.clc.tick()
+            self.pos += self.vec * delta
             c = all.game.getcell(int(self.pos.x // all.game.cellsizx), int(self.pos.y // all.game.cellsizy))
             if c == None or c.pos:
                 if (not c == None) and c.destr:
@@ -326,15 +362,14 @@ class arrow(entity):
             c = poscolide(self.pos, ignor=self.ignored, typign=[self.ignoredtype, 'item'])
             if c != None and c != self.ignored:
                 c.hit(self.damage)
-                self.live = False
-                all.game.dodelete = True
+                all.game.delete_object(self)
                 return
         elif self.state == 1:
             if lastarrowid[0] - self.id > 5:
-                self.live = False
-                all.game.dodelete = True
-        screen.blit(self.rendered, pos)
+                all.game.delete_object(self)
 
+    def client_update(self, delta):
+        self.pos += self.vec * delta
 
 class player(entity):
     def __init__(self, x=0, y=0):
@@ -356,7 +391,7 @@ class player(entity):
         self.gunsdvg = pygame.Vector2(20, 0)
         self.gunpos = pygame.Vector2(0, 0)
         self.guncorect = pygame.Vector2(0, 0)
-        self.cornpos = pygame.Vector2(0, 0)
+        self.cornpos = pygame.Vector2(all.game.cellsizx, all.game.cellsizy)
         self.feetanim = animation(all.game.playerfeet, 0.2, [0, 2])
         self.moving = False
         self.drawsdwg = pygame.Vector2(0, 0)
@@ -375,14 +410,26 @@ class player(entity):
         self.health = 15
         self.itemselected = None
         self.level = 0
+        self.wiewin = pygame.Vector2(self.pos.x, self.pos.y)
+        self.pwiewin = pygame.Vector2(self.wiewin.x, self.wiewin.y)
+        self.net_params = ((True, True), ['wiewin', 'selected', 'inventar'], (), (True, False), ['wiewin', 'selected'])
+        self.eraese_time = 10 / self.speed
+        
+        self.timer_cap = 0
+        self.prx = self.pos.x
+        self.pry = self.pos.y
+        self.tx = self.pos.x
+        self.ty = self.pos.y
 
 
     def drawer(self, screen, pos):
         screen.blit(self.player, pos + self.drawsdwg)
         self.feetanim.draw(screen, pos + self.drawsdwg + self.drawfeetsdwg)
-        screen.blit(self.eye, pos + self.center + self.lefteye + (all.curpos - (pos + self.center)) / 90)
-        screen.blit(self.eye, pos + self.center + self.righteye + (all.curpos - (pos + self.center)) / 90)
-        screen.blit(self.month, pos + self.center + self.monthsdvg + (all.curpos - (pos + self.center)) / 130)
+        if self.feetanim:
+            self.feetanim.update()
+        screen.blit(self.eye, pos + self.center + self.lefteye + (self.wiewin - (self.pos + self.center)) / 90)
+        screen.blit(self.eye, pos + self.center + self.righteye + (self.wiewin - (self.pos + self.center)) / 90)
+        screen.blit(self.month, pos + self.center + self.monthsdvg + (self.wiewin - (self.pos + self.center)) / 130)
         screen.blit(self.armdraw, pos + self.center + self.armvec + self.armsdvg)
 
         if self.inventar[self.selected] != None:
@@ -449,6 +496,26 @@ class player(entity):
     def offclick(self):
         self.clicked = False
 
+    def net_onclick(self):
+        if not self.clicked:
+            self.clicked = True
+            all.client.netdat.send_request(16, '1')
+            all.client.need_send = True
+
+    def net_offclick(self):
+        if self.clicked:
+            self.clicked = False
+            all.client.netdat.send_request(16, '0')
+            all.client.need_send = True
+
+    def equip(self):
+        self.inventar[self.selected], self.itemselected.gun = self.itemselected.gun, self.inventar[self.selected]
+
+    def take_heal(self, c):
+        all.game.delete_object(c)
+        self.health += 3
+
+
     def ubdate(self, delta):
         #self.pos = self.pos + self.mv * self.speed * delta
         if self.mv.length():
@@ -458,15 +525,13 @@ class player(entity):
                 self.feetanim.frame = 1
             self.pos = self.pos + collision(self.pos, self.cornpos, self.mv * self.speed * delta)
             tocolision(self.coliscells, self.pos, self.cornpos, self)
-            self.feetanim.update()  
+              
             c = all.game.getcell(int((self.pos.x + self.center.x) // all.game.cellsizx), int((self.pos.y + self.center.y) // all.game.cellsizy))
             if c != None and c.type == 'luck':
                 all.game.nextlevel()
             c = poscolide(self.pos + self.center, ignor=self, white='item')
             if c != None and type(c.gun) is hert:
-                c.live = False
-                all.game.dodelete = True
-                self.health += 3
+                self.take_heal(c)
             else:
                 self.itemselected = c
 
@@ -477,6 +542,73 @@ class player(entity):
                 self.feetanim.frame = 1
 
         if self.inventar[self.selected] != None:
+            if abs(time() - self.lastf) > self.inventar[self.selected].worker.timr:
+                self.lastf = time()
+                self.inventar[self.selected].worker.update()
+            if self.clicked:
+                self.inventar[self.selected].worker.fire(self.pos + self.center + self.armsdvg + self.guncorect, self.gunpos, self)
+
+    def set_pos(self, x, y):
+        if self != all.client.game.playerclass:
+            self.tx = x
+            self.ty = y
+            self.prx = self.pos.x
+            self.pry = self.pos.y
+            self.timer_cap = 0
+        else:
+            self.pos.x = x
+            self.pos.y = y
+
+    def client_update(self, delta):
+        if self != all.client.game.playerclass:
+            
+            if self.pos.x != self.tx or self.pos.y != self.ty:
+                if not self.moving:
+                    self.moving = True
+                    self.feetanim.playing = True
+                    self.feetanim.frame = 1
+                self.timer_cap += delta
+                
+                if self.timer_cap >= self.eraese_time:
+                    self.timer_cap = self.eraese_time
+                
+                if self.pos.x != self.tx:
+                    self.pos.x = self.prx + (self.tx - self.prx) * (self.timer_cap / self.eraese_time)
+                if self.pos.y != self.ty:
+                    self.pos.y = self.pry + (self.ty - self.pry) * (self.timer_cap / self.eraese_time)
+            else:
+                if self.moving:
+                    self.timer_cap = 0
+                    self.moving = False
+                    self.feetanim.playing = False
+        else:
+            if self.mv.length():
+                if not self.moving:
+                    self.moving = True
+                    self.feetanim.playing = True
+                    self.feetanim.frame = 1
+                self.pos = self.pos + collision(self.pos, self.cornpos, self.mv * self.speed * delta)
+                tocolision(self.coliscells, self.pos, self.cornpos, self)
+            else:
+                if self.moving:
+                    self.moving = False
+                    self.feetanim.playing = False
+                    self.feetanim.frame = 1
+
+    def server_update(self, delta):
+        if abs(self.pwiewin.x - self.wiewin.x) > 50 or abs(self.pwiewin.y - self.wiewin.y) > 50:
+            self.sync = True
+            self.pwiewin.x = self.wiewin.x
+            self.pwiewin.y = self.wiewin.y
+
+        if abs(self.prx - self.pos.x) > 10 or abs(self.pry - self.pos.y) > 10:
+            self.sync = True
+            self.prx = self.pos.x
+            self.pry = self.pos.y
+        if self.inventar[self.selected] != None:
+            angle = (self.wiewin - self.pos).angle_to((1,0))
+            self.gunpos = self.gunsdvg.rotate(angle)
+            self.gunpos.y = -self.gunpos.y
             if abs(time() - self.lastf) > self.inventar[self.selected].worker.timr:
                 self.lastf = time()
                 self.inventar[self.selected].worker.update()
@@ -600,6 +732,9 @@ class enemy(player):
         self.lastf = time()
         self.health = 6
 
+        self.lazyplid = 0
+        self.net_params = ((False, True), ('inventar', 'wiewin', 'mv', 'pos'), (), (True, True))
+
     def tostate(self, stat):
         if self.state == stat:
             return
@@ -638,11 +773,20 @@ class enemy(player):
 
 
     def lazy(self):
-        c, t = raycast(self.pos + self.center, (all.game.playerclass.pos + all.game.playerclass.center) - (self.pos + self.center), ignor=self, typign=[self.type, 'item'], white='player')
-        #print(c, t)
-        if t and c == all.game.playerclass:
+        self.lazyplid += 1
+        pl = all.game.getplayers()
+        
+        if len(pl) <= self.lazyplid:
+            self.lazyplid = 0
+        if len(pl) == 0:
+            pl = self
+        else:
+            pl = pl[self.lazyplid]
+        c, t = raycast(self.pos + self.center, (pl.pos + pl.center) - (self.pos + self.center), ignor=self, typign=[self.type, 'item'], white='player')
+        
+        if t and c == pl:
             
-            self.lastsee = all.game.playerclass.pos
+            self.lastsee = pl.pos
             if not self.see:
                 self.see = True
                 self.tostate(3)
@@ -656,7 +800,8 @@ class enemy(player):
                 self.see = False
 
         if self.state == 2 or self.state == 3:
-            self.wiewin = all.game.playerclass.pos + all.game.playerclass.center
+            
+            self.wiewin = pl.pos + pl.center
         else:
             self.wiewin = self.mv + self.pos
         if self.state == 0:
@@ -689,7 +834,7 @@ class enemy(player):
         if self.inventar[self.selected] != None:
             self.inventar[self.selected].draw(screen, pos + self.center + self.armsdvg + self.guncorect)
 
-    
+
         
     def fire(self):
         if self.inventar[self.selected] != None:
@@ -724,6 +869,8 @@ class enemy(player):
                 self.pathid -= 1
                 if self.pathid < 0:
                     self.haspath = False
+                    if self.mv.length() != 0:
+                        self.sync = True
                     self.mv.update(0, 0)
                     if self.state == 3:
                          self.path = pathfind(int(self.pos.x // all.game.cellsizx),
@@ -742,21 +889,28 @@ class enemy(player):
                     return
             self.move(self.path[self.pathid] - self.pos)
         else:
+            if self.mv.length() != 0:
+                self.sync = True
             self.mv.update(0, 0)
 
+    def client_update(self, delta):
+        self.pos = self.pos = self.pos + self.mv * self.speed * delta
+        
 
     def move(self, mov):
         if mov.length() == 0:
             self.mv.update(0, 0)
             return
-        self.mv = pygame.math.Vector2.normalize(mov)
+        pr = pygame.math.Vector2.normalize(mov)
+        if pr != self.mv:
+            self.sync = True
+        self.mv = pr
 
     def hit(self, dmg):
         self.health -= dmg
         if self.health <= 0:
             self.health = 0
-            self.live = False
-            all.game.dodelete = True
+            all.game.delete_object(self)
             return
 
 class item(entity):
@@ -767,11 +921,13 @@ class item(entity):
         self.cornpos = pygame.Vector2(30, 30)
         self.mas = set()
         tocolision(self.mas, self.pos, self.cornpos, self)
+        self.net_params = ((False, False), ['gun'], (), (False, True))
          
     def drawer(self, screen, pos):
         if self.gun == None:
-            self.live = False
-            all.game.dodelete = True
+            
+            all.game.delete_object(self)
+            
             return
 
         self.gun.draw(screen, pos)
@@ -779,10 +935,17 @@ class item(entity):
     def remover(self):
         for i in self.mas:
             i.mas.remove(self)
+    def on_sync_get(self):
+        if 'gun' in str(type(self.gun)):
+            self.gun.updateimage()
 
 class hert:
     def __init__(self, *args, **kwargs):
-        pass
+        self.net_params = ((False, False), (), (), (False, True))
 
     def draw(self, screen, pos):
         screen.blit(textures['heart'][1], pos)
+
+
+grid_cells = [wall, box, flor, luck, superbox]
+objects = [bullet, minibul, plasmabul, arrow, player, enemy, item]

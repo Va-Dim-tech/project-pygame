@@ -24,8 +24,10 @@ class menu():
             else:
                 self.startbtnsel = False
         if event.type == pygame.MOUSEBUTTONUP:
+            
             if self.startbtnsel:
-                loadscene('game')
+                #loadscene('game')
+                loadscene('client')
 
 
     def drawer(self, dt, screen):
