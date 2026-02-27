@@ -276,6 +276,8 @@ def generator_for_sunc_data(obj):
             return 'T'
         else:
             return 'F'
+    elif obj is None:
+        return 'N'
     elif type(obj) in other_objects:
         st = '{'
         for i in obj.net_params[1]:
@@ -537,6 +539,43 @@ def plyer_fire(arg, client=None):
         else:
             client.playerclass.clicked = False
 
+def player_equip(arg, client=None):
+    if client == None:
+        return
+    if client.playerclass != None:
+        if not arg.isdigit():
+            print('player_equip uuid not is digit', arg)
+            return
+        id = int(arg)
+        obj = None
+        for i in levels[client.level].entitys:
+            if i.uuid == id:
+                obj = i
+                break
+        if obj is None:
+            print('obbj not found in parse_what_obj', arg)
+            return
+        if obj.type != 'item':
+            print('client trying to equip not item obect', obj.type)
+            return
+
+        client.playerclass.itemselected = obj;
+        if type(obj.gun) is hert:
+            client.playerclass.take_heal(obj)
+        else:
+            client.playerclass.equip()
+            for i in levels[client.level].clients:
+                sync_weapon(i)
+
+def player_select_weapon(arg, client=None):
+    if not arg.isdigit():
+        print('player_select_weapon id not is digit', arg)
+        return
+    arg = int(arg)
+    client.playerclass.selected = arg
+    for i in levels[client.level].clients:
+        send_sync_data(i, client.playerclass,  param=['selected'])
+
 
 functions[0] = reaction_to_client_disconct
 functions[5] = ping_retransmission
@@ -546,6 +585,8 @@ functions[12] = sync_object
 functions[13] = surface_response
 functions[15] = parse_what_obj
 functions[16] = plyer_fire
+functions[17] = player_equip
+functions[18] = player_select_weapon
 
 print('opening config file')
 if not os.path.isfile(config_file_name):

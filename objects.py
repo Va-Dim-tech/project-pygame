@@ -412,7 +412,8 @@ class player(entity):
         self.level = 0
         self.wiewin = pygame.Vector2(self.pos.x, self.pos.y)
         self.pwiewin = pygame.Vector2(self.wiewin.x, self.wiewin.y)
-        self.net_params = ((True, True), ['wiewin', 'selected', 'inventar'], (), (True, False), ['wiewin', 'selected'])
+        self.net_params = ((True, True), ['wiewin', 'inventar', 'health'], (), (True, False), ['wiewin', 'selected'])
+        self.pref_selected = 0
         self.eraese_time = 10 / self.speed
         
         self.timer_cap = 0
@@ -511,6 +512,11 @@ class player(entity):
     def equip(self):
         self.inventar[self.selected], self.itemselected.gun = self.itemselected.gun, self.inventar[self.selected]
 
+    def net_equip(self):
+
+        all.client.netdat.send_request(17, str(self.itemselected.uuid))
+        all.client.need_send = True
+
     def take_heal(self, c):
         all.game.delete_object(c)
         self.health += 3
@@ -589,11 +595,22 @@ class player(entity):
                     self.feetanim.frame = 1
                 self.pos = self.pos + collision(self.pos, self.cornpos, self.mv * self.speed * delta)
                 tocolision(self.coliscells, self.pos, self.cornpos, self)
+                c = poscolide(self.pos + self.center, ignor=self, white='item')
+                if c != None and type(c.gun) is hert:
+                    all.client.netdat.send_request(17, str(c.uuid))
+                    all.client.need_send = True
+                else:
+                    self.itemselected = c
             else:
                 if self.moving:
                     self.moving = False
                     self.feetanim.playing = False
                     self.feetanim.frame = 1
+            if self.selected != self.pref_selected:
+                self.pref_selected = self.selected
+                all.client.netdat.send_request(18, str(self.selected))
+                all.client.need_send = True
+
 
     def server_update(self, delta):
         if abs(self.pwiewin.x - self.wiewin.x) > 50 or abs(self.pwiewin.y - self.wiewin.y) > 50:
@@ -605,6 +622,7 @@ class player(entity):
             self.sync = True
             self.prx = self.pos.x
             self.pry = self.pos.y
+            tocolision(self.coliscells, self.pos, self.cornpos, self)
         if self.inventar[self.selected] != None:
             angle = (self.wiewin - self.pos).angle_to((1,0))
             self.gunpos = self.gunsdvg.rotate(angle)
@@ -614,6 +632,7 @@ class player(entity):
                 self.inventar[self.selected].worker.update()
             if self.clicked:
                 self.inventar[self.selected].worker.fire(self.pos + self.center + self.armsdvg + self.guncorect, self.gunpos, self)
+
 
     def move(self, mov):
         if mov.length() == 0:
@@ -921,8 +940,13 @@ class item(entity):
         self.cornpos = pygame.Vector2(30, 30)
         self.mas = set()
         tocolision(self.mas, self.pos, self.cornpos, self)
-        self.net_params = ((False, False), ['gun'], (), (False, True))
+        self.net_params = ((True, False), ['gun'], (), (False, True))
          
+    def server_update(self, delta):
+        if self.gun == None:
+            all.game.delete_object(self)
+            return
+
     def drawer(self, screen, pos):
         if self.gun == None:
             

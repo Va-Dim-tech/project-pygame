@@ -9,7 +9,7 @@ from time import time
 
     
 
-
+blitlock = threading.Lock()
 
 
 class client():
@@ -68,6 +68,7 @@ class client():
         self.keep_alive_time_t = time()
         self.ldtexttures= {}
         self.objects = {}
+        self.ldtextures= {}
         self.snctextures = {}
         self.surfacecinprocess = {}
         self.need_send = True
@@ -77,7 +78,9 @@ class client():
         self.game.eventer(event)
 
     def drawer(self, dt, screen):
+        blitlock.acquire()
         self.game.drawer(dt, screen)
+        blitlock.release()
 
     def toscene(self):
         shutdown()
@@ -793,6 +796,9 @@ def generator_for_sync_obj(i, arg, obj, param, aobj):
             return(i, float(st))
         else:
             return(i, int(st))
+    elif arg[i] == 'N':
+        i += 1
+        return (i, None)
     else:
         pi = i
         while i < len(arg) and arg[i] != ' ':
@@ -904,6 +910,7 @@ def set_player(arg, **keys):
     all.client.game.playerclass.uuid = arg
     all.client.game.playerclass.onclick = all.client.game.playerclass.net_onclick
     all.client.game.playerclass.offclick = all.client.game.playerclass.net_offclick
+    all.client.game.playerclass.equip = all.client.game.playerclass.net_equip
 
 
 def del_obj(arg, **keys):
@@ -1025,6 +1032,7 @@ def get_surface(arg, **karg):
         if surf == None:
             print('get_surface: error: fail to parse surface')
             return
+
         all.client.ldtextures[id] = surf
         del all.client.surfacecinprocess[id]
         print('get_surface: message: recieved surface', id, all.client.ldtextures[id])
@@ -1035,7 +1043,9 @@ def get_surface(arg, **karg):
             print('get_surface: message: setting', j[1], 'of obj', j[0])
 
             if type(j[0]) == gun:
+                blitlock.acquire()
                 j[0].updateimage()
+                blitlock.release()
 
             setattr(j[0], j[1], all.client.ldtextures[id])
 

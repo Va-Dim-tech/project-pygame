@@ -26,6 +26,8 @@ functions = {0:None, # disconnected
              14:None, #set player (uuid)
              15:None, #what is obj (uuid kparam:[i]:)
              16:None, #player fire (1 or 0)
+             17:None, # player equip
+             18:None  #player select weapon
              } 
 
 
