@@ -565,6 +565,7 @@ def player_equip(arg, client=None):
         else:
             client.playerclass.equip()
             for i in levels[client.level].clients:
+                send_sync_data(i, obj)
                 sync_weapon(i)
 
 def player_select_weapon(arg, client=None):
@@ -712,8 +713,10 @@ class level():
     def add_gnerated_object(self, obj):
         obj.prx = obj.pos.x
         obj.pry = obj.pos.y
+        obj.server_init()
         print('addet obj', obj)
         self.entitys.append(obj)
+
         for i in self.clients:
             send_new_object(i, obj)
             send_sync_data(i, obj)

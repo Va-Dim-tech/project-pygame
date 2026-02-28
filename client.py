@@ -531,6 +531,7 @@ def set_new_obj(arg, **karg):
     obj.uuid = uuid
     all.client.objects[uuid] = obj
     all.client.game.add_gnerated_object(obj)
+    obj.client_init()
 
 def move_object(arg, **keys):
     argt = arg.split()
@@ -731,9 +732,11 @@ def generator_for_sync_obj(i, arg, obj, param, aobj):
                     return
                 if type(ob) != tuple:
                     i = ob
-                    i = arg.find(']', i)
+                    #i = arg.find(']', i)
                     i += 1
-                    return i
+                    id += 1
+                    continue
+                    #return i
                 i, ob = ob
                 if type(ob) == int:
                     if ob == -10:
@@ -747,7 +750,7 @@ def generator_for_sync_obj(i, arg, obj, param, aobj):
             
             i+= 1 
         i+= 1
-
+        
         return i 
     elif arg[i] == '{':
         if obj == None:
@@ -923,6 +926,7 @@ def del_obj(arg, **keys):
     
 def delete_object(uuid):
     obj = all.client.objects[uuid]
+    obj.remover()
     del all.client.objects[uuid]
     all.client.game.entitys.remove(obj)
 

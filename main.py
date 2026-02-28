@@ -208,8 +208,8 @@ if __name__ == '__main__':
     all.toloadids = ['menu_back', 'menu_start_btn']
 
     loadscene('menu')
-
     settings['up'] = pygame.key.key_code('w')
+
     settings['down'] = pygame.key.key_code('s')
     settings['left'] = pygame.key.key_code('a')
     settings['right'] = pygame.key.key_code('d')

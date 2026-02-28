@@ -182,7 +182,10 @@ class entity():
         self.sync = False
         self.net_params = ((False, False), (), (), (False, True), ()) #has (server update, client update), (sync params) (creating params) (has sync var(0=no, 1=sync without sync pos, 2=sync with pos), need update, (client sync params))
 
-
+    def client_init(self):
+        pass
+    def server_init(self):
+        pass
     def drawer(self, screen, pos):
         pass
     def ubdate(self, delta):
@@ -513,7 +516,7 @@ class player(entity):
         self.inventar[self.selected], self.itemselected.gun = self.itemselected.gun, self.inventar[self.selected]
 
     def net_equip(self):
-
+        print(self.itemselected.uuid)
         all.client.netdat.send_request(17, str(self.itemselected.uuid))
         all.client.need_send = True
 
@@ -786,7 +789,8 @@ class enemy(player):
                 self.haspath = False
 
     def remover(self):
-        all.game.lazyenemy.remove(self)
+        if self in all.game.lazyenemy:
+            all.game.lazyenemy.remove(self)
         for i in self.coliscells:
             i.mas.remove(self)
 

@@ -185,7 +185,7 @@ def generator(grid, gridsizx, gridsizy, labirintxcells, labirintycells):
             continue
         c = all.game.getcell(a[0], a[1])
         if c != None and (not c.pos):
-            if randint(0, 3) == 0:
+            if randint(0, 3) == 0 or True:
                 grid[a[1]][a[0]] = superbox(a[0], a[1])
             else:
                 grid[a[1]][a[0]] = box(a[0], a[1])
