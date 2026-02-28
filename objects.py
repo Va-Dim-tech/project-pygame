@@ -180,7 +180,7 @@ class entity():
         lastid += 1
 
         self.sync = False
-        self.net_params = ((False, False), (), (), (False, True), ()) #has (server update, client update), (sync params) (creating params) (has sync var(0=no, 1=sync without sync pos, 2=sync with pos), need update, (client sync params))
+        self.net_params = ((False, False), (), (), (False, True), (), False) #has (server update, client update), (sync params) (creating params) (has sync var(0=no, 1=sync without sync pos, 2=sync with pos), need update, (client sync params), has locker)
 
     def client_init(self):
         pass

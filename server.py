@@ -713,6 +713,8 @@ class level():
     def add_gnerated_object(self, obj):
         obj.prx = obj.pos.x
         obj.pry = obj.pos.y
+        if len(obj.net_params) > 5 and obj.net_params[5]:
+            obj.lock = hreading.Lock()
         obj.server_init()
         print('addet obj', obj)
         self.entitys.append(obj)
