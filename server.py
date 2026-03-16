@@ -44,7 +44,7 @@ class client:
         self.key = randint(1, 100000)
         self.netdat = None
         self.instantsend = True
-        self.level = 0
+        self.level = -1
         self.playerclass = None
         self.older_tim_fix = 0
         self.timr = None 
@@ -225,12 +225,13 @@ def reaction_to_client_disconct(arg, client=None):
         levels[client.level].delete_object(client.playerclass)
     clients_lock.acquire()
     del clients[client.netdat.id]
-    clients_lock.release()
+    clients_lock.release() 
 
     detach_player(client)
 
 def to_start_game(arg, client=None):
     client.netdat.send_request(8, '0', addition=start_game)
+
 
 
 def start_game(arg, client=None):
@@ -714,7 +715,7 @@ class level():
         obj.prx = obj.pos.x
         obj.pry = obj.pos.y
         if len(obj.net_params) > 5 and obj.net_params[5]:
-            obj.lock = hreading.Lock()
+            obj.lock = threading.Lock()
         obj.server_init()
         print('addet obj', obj)
         self.entitys.append(obj)
@@ -760,6 +761,19 @@ def add_player(levelid, client):
     client.playerclass = pl
 
     return pl
+
+def get_next_player_level(client):
+    return (client.level + 1) % len(levels)
+
+def change_player_level(levelid, client):
+    if len(levels[levelid].players) == 0:
+        gen_level(levels[levelid])
+    levels[levelid].add_gnerated_object(client.playerclass)
+    levels[levelid].players.append(client.playerclass)
+    levels[levelid].clients.append(client)
+
+    levels[client.level].delete_object(client.playerclass)
+    levels[client.level].clients
 
 def sync_weapon(client):
     print('weapon send')
@@ -830,9 +844,19 @@ while True:
                 if i.net_params[3][0]:
                     i.sync = False
                     if i.net_params[3][1]:
-                        i.ubdate(dt)
+                        if len(i.net_params) > 5 and i.net_params[5]:
+                            i.lock.acquire()
+                            i.ubdate(dt)
+                            i.lock.release()
+                        else:
+                            i.ubdate(dt)
                     if i.net_params[0][0]:
-                        i.server_update(dt)
+                        if len(i.net_params) > 5 and i.net_params[5]:
+                            i.lock.acquire()
+                            i.server_update(dt)
+                            i.lock.release()
+                        else:
+                            i.server_update(dt)
                     if i.sync:
                         clients_lock.acquire()
                         for j in lvl.clients:

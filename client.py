@@ -775,6 +775,10 @@ def generator_for_sync_obj(i, arg, obj, param, aobj):
                 else:
                     i, ob = ob
                     setattr(obj, kparam, ob)
+                if hasattr(obj, 'on_sync_get'):
+                    blitlock.acquire()
+                    obj.on_sync_get()
+                    blitlock.release()
             i += 1
         return i
     elif arg[i] == '<':
@@ -817,7 +821,7 @@ def sync_obj(arg, **karg):
     if len(arg) < 5:
         print('sync_obj: error: str is too small', arg)
         return
-
+    '''
     if 'wiewin' in arg and False:
         l = 0 
         pi = l
@@ -847,7 +851,7 @@ def sync_obj(arg, **karg):
                 if 'wiewin' in kparam and kparam != 'wiewin':
                     print('fail') ## сопипаст код для дебага, плавающая ошибка
             l += 1
-
+    '''
     i = 0 
     pi = i 
     i = arg.find(' ', i)
@@ -893,7 +897,7 @@ def sync_obj(arg, **karg):
                         setattr(obj, kparam, ob)
                 else:
                     setattr(obj, kparam, ob)
-        i += 1 
+        i += 1
     obj.on_sync_get()
 
 

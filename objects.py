@@ -178,6 +178,7 @@ class entity():
         self.pos = pygame.Vector2(x, y)
         self.uuid = lastid
         lastid += 1
+        self.lock = None
 
         self.sync = False
         self.net_params = ((False, False), (), (), (False, True), (), False) #has (server update, client update), (sync params) (creating params) (has sync var(0=no, 1=sync without sync pos, 2=sync with pos), need update, (client sync params), has locker)
@@ -343,7 +344,7 @@ class arrow(entity):
         self.state = 0
         self.id = arrowid[0]
         arrowid[0] += 1
-        self.net_params = ((False, True), (), ['vec'], (False, True))
+        self.net_params = ((True, True), ['state'], ['vec'], (True, False))
 
     def drawer(self, screen, pos):
         if not self.live:
@@ -354,6 +355,7 @@ class arrow(entity):
     def ubdate(self, delta):
         if self.state == 0:
             self.pos += self.vec * delta
+            
             c = all.game.getcell(int(self.pos.x // all.game.cellsizx), int(self.pos.y // all.game.cellsizy))
             if c == None or c.pos:
                 if (not c == None) and c.destr:
@@ -371,8 +373,29 @@ class arrow(entity):
             if lastarrowid[0] - self.id > 5:
                 all.game.delete_object(self)
 
+    def server_update(self, delta):
+        if self.state == 0:
+            self.pos += self.vec * delta
+            c = all.game.getcell(int(self.pos.x // all.game.cellsizx), int(self.pos.y // all.game.cellsizy))
+            if c == None or c.pos:
+                if (not c == None) and c.destr:
+                    c.destroy()
+                self.state = 1
+                self.sync = True
+                if lastarrowid[0] < self.id:
+                    lastarrowid[0] = self.id
+                return
+            c = poscolide(self.pos, ignor=self.ignored, typign=[self.ignoredtype, 'item'])
+            if c != None and c != self.ignored:
+                c.hit(self.damage)
+                all.game.delete_object(self)
+                return
+
     def client_update(self, delta):
-        self.pos += self.vec * delta
+        if self.state == 0:
+            self.pos += self.vec * delta
+
+
 
 class player(entity):
     def __init__(self, x=0, y=0):
@@ -406,7 +429,7 @@ class player(entity):
         self.eyeposdvg = pygame.Vector2(0, 0)
         self.itemsdvg = pygame.Vector2(0, -20)
         self.inventar = [None, None]
-        self.selected = 0
+        self._selected = 0
         self.coliscells = set()
         self.clicked = False
         self.lastf = time()
@@ -415,16 +438,30 @@ class player(entity):
         self.level = 0
         self.wiewin = pygame.Vector2(self.pos.x, self.pos.y)
         self.pwiewin = pygame.Vector2(self.wiewin.x, self.wiewin.y)
-        self.net_params = ((True, True), ['wiewin', 'inventar', 'health'], (), (True, False), ['wiewin', 'selected'])
+        self.net_params = ((True, True), ['wiewin', 'inventar', 'health'], (), (True, False), ['wiewin'], True)
         self.pref_selected = 0
         self.eraese_time = 10 / self.speed
-        
         self.timer_cap = 0
         self.prx = self.pos.x
         self.pry = self.pos.y
         self.tx = self.pos.x
         self.ty = self.pos.y
 
+    
+
+    def _set_selected(self, v):
+        if self.lock != None:
+            self.lock.acquire()
+            self._selected = v
+            self.lock.release()
+        else:
+            self._selected = v
+        
+    def _get_selected(self):
+        return self._selected
+            
+
+    selected = property(fset=_set_selected, fget=_get_selected)
 
     def drawer(self, screen, pos):
         screen.blit(self.player, pos + self.drawsdwg)
