@@ -63,6 +63,7 @@ class client():
         self.game.entitys = []
         self.game.lazyenemy = []
         self.game.state = 0
+        self.game.end_game = respawn
         self.ping_time_t = time()
         self.dead_time_t = time()
         self.keep_alive_time_t = time()
@@ -150,6 +151,9 @@ class client():
 
     def doneload(self):
         pass
+
+def respawn():
+    all.client.netdat.send_request(19, '3')
 
 
 stop = False
@@ -469,7 +473,7 @@ def parser_for_set_new_obj(i, arg):
 
 
 def set_new_obj(arg, **karg):
-    print('new obj', arg)
+    #print('new obj', arg)
     if len(arg) < 6:
         print('set new object: error is too small in', srg)
         return
@@ -817,7 +821,7 @@ def generator_for_sync_obj(i, arg, obj, param, aobj):
 
 
 def sync_obj(arg, **karg):
-    print('sync_obj', arg)
+    #print('sync_obj', arg)
     if len(arg) < 5:
         print('sync_obj: error: str is too small', arg)
         return

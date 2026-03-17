@@ -185,7 +185,7 @@ def generator(grid, gridsizx, gridsizy, labirintxcells, labirintycells):
             continue
         c = all.game.getcell(a[0], a[1])
         if c != None and (not c.pos):
-            if randint(0, 3) == 0 or True:
+            if randint(0, 3) == 0:
                 grid[a[1]][a[0]] = superbox(a[0], a[1])
             else:
                 grid[a[1]][a[0]] = box(a[0], a[1])
@@ -216,7 +216,7 @@ def generator(grid, gridsizx, gridsizy, labirintxcells, labirintycells):
                 break
         if not flag:
             continue
-        #all.game.add_gnerated_object(enemy(path[i][0] * all.game.cellsizx, path[i][1] * all.game.cellsizy))
+        all.game.add_gnerated_object(enemy(path[i][0] * all.game.cellsizx, path[i][1] * all.game.cellsizy))
         
     for i in range(30):
         a = (randint(0, all.game.gridsizx), randint(0, all.game.gridsizy))
@@ -230,7 +230,7 @@ def generator(grid, gridsizx, gridsizy, labirintxcells, labirintycells):
                 break
         if not flag:
             continue
-        #all.game.add_gnerated_object(enemy(a[0] * all.game.cellsizx, a[1] * all.game.cellsizy))
+        all.game.add_gnerated_object(enemy(a[0] * all.game.cellsizx, a[1] * all.game.cellsizy))
         
     all.game.grid[int(path[0][1] / all.game.cellsizy)][int(path[0][0] / all.game.cellsizx)] = luck(int(path[0][0] / all.game.cellsizx), int(path[0][1] / all.game.cellsizy))
     return startpos
@@ -278,6 +278,12 @@ class game():
         self.playerhealsdvg = pygame.Vector2(20, 20)
         self.state = 0
         self.players = []
+
+    def add_player(self, player):
+        self.players = [player]
+
+    def del_player(self, player):
+        pass
 
     def gamower(self):
         print('gamover')
@@ -434,7 +440,7 @@ class game():
                 if self.playerclass != None:
                     self.playerclass.onclick()
             elif self.state == 1:
-                main.changescene('menu')
+                self.end_game()
         if event.type == pygame.KEYDOWN:
             if self.state == 0:
                 if self.playerclass != None:
@@ -447,7 +453,10 @@ class game():
                             self.playerclass.equip()
                         
             elif self.state == 1:
-                main.changescene('menu')
+                self.end_game()
+
+    def end_game(self):
+        main.changescene('menu')
 
     def nextlevel(self):
 

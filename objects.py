@@ -390,6 +390,9 @@ class arrow(entity):
                 c.hit(self.damage)
                 all.game.delete_object(self)
                 return
+        elif self.state == 1:
+            if lastarrowid[0] - self.id > 5:
+                all.game.delete_object(self)
 
     def client_update(self, delta):
         if self.state == 0:
@@ -446,8 +449,11 @@ class player(entity):
         self.pry = self.pos.y
         self.tx = self.pos.x
         self.ty = self.pos.y
+        self.server = False
 
-    
+    def server_init(self):
+        self.server = True
+        return super(player, self).server_init()
 
     def _set_selected(self, v):
         if self.lock != None:
@@ -685,8 +691,10 @@ class player(entity):
         self.health -= dmg
         if self.health <= 0:
             self.health = 0
-            all.game.gamower()
-
+            if not self.server:
+                all.game.gamower()
+            else:
+                all.game.player_dead(self)
 
 
 circlepos = [(1, 0), (1, 1), (0, 1),(1, -1), (-1, 0), (-1, -1), (0, -1), (-1, 1)]
@@ -833,7 +841,7 @@ class enemy(player):
 
 
     def lazy(self):
-        self.lazyplid += 1
+        #self.lazyplid += 1
         pl = all.game.getplayers()
         
         if len(pl) <= self.lazyplid:
@@ -858,6 +866,7 @@ class enemy(player):
             if self.see:
                 self.tostate(2)
                 self.see = False
+            self.lazyplid += 1
 
         if self.state == 2 or self.state == 3:
             

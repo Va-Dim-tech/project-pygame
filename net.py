@@ -27,7 +27,8 @@ functions = {0:None, # disconnected
              15:None, #what is obj (uuid kparam:[i]:)
              16:None, #player fire (1 or 0)
              17:None, # player equip
-             18:None  #player select weapon
+             18:None, #player select weapon
+             19:None #respawn player
              } 
 
 
@@ -62,6 +63,7 @@ class netdata:
 
 
     def message_parser(netdat, msg):
+        print(msg)
         if len(msg) < 11:
             print('parse rror 0 in mes', msg)
             return None
@@ -272,7 +274,12 @@ class netdata:
             if functions[j[0]] == None:
                 print('truing to exec not existet function', j)
                 continue
-            res = functions[j[0]](j[1], client=client)
+            try:
+                res = functions[j[0]](j[1], client=client)
+            except BaseException as e:
+                res = None
+                print('EXEPTION in functions', functions[j[0]], e)
+            
             if res != None:
                 netdat.send_answer(i, str(res))
 
@@ -281,8 +288,13 @@ class netdata:
             if j[0] not in netdat.funcs:
                 print('nothing to ansver to', j)
                 continue
-            print('executing', netdat.funcs[j[0]])
-            netdat.funcs[j[0]](j[1], client=client)
+            #print('executing', netdat.funcs[j[0]])
+            try:
+                netdat.funcs[j[0]](j[1], client=client)
+            except BaseException as e:
+                print('EXEPTION in answer to functions', functions[j[0]], e)
+
+            
             del netdat.funcs[j[0]]
 
     def exec_data_funcs(netdat, client, data):
@@ -290,7 +302,11 @@ class netdata:
             if functions[i[0]] == None:
                 print('nothing to exec to dat', i)
                 continue
-            functions[i[0]](i[1], client=client)
+            try:
+                functions[i[0]](i[1], client=client)
+            except BaseException as e:
+                print('EXEPTION in data func', functions[i[0]], e)
+            
 
 
 

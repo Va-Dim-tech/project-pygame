@@ -78,9 +78,11 @@ class client:
         if state == self.state:
             return
         if state == 0:
-            
             self.instantsend = False
-
+        elif state == 1:
+            pass
+        elif state == 2:
+            pass
         elif state == 3:
             self.instantsend = True
 
@@ -89,14 +91,36 @@ class client:
 
 
 def detach_player(client):
-    pass
+    clients_lock.acquire()
+    client.to_state(1)
+    client.netdat.send_request(8, '1')
+    client.playerclass = None
+    clients_lock.release()
 
+def detach_client_from_level(client):
+    clients_lock.acquire()
+    levels[client.level].clients.remove(client)
+    for y in range(all.game.gridsizy):
+        for x in range(all.game.gridsizx):
+            client.netdat.send_request(7, str(grid_cells.index(flor)) + ' ' + str(x) + ' ' + str(y))
+
+    for i in levels[client.level].entitys:
+        send_del_obj(client, obj)
+
+    client.need_send = True
+    clients_lock.release()
+    client.to_state(1)
+    
 
 def client_disconnect(client, reason):
     if reason != 'timeout':
         client.netdat.send_request(0, reason)
         send_data(client)
+    clients_lock.acquire()
+    levels[client.level].clients.remove(client)
+    
     del clients[client.id]
+    clients_lock.release()
     detach_player(client)
 
 
@@ -222,7 +246,9 @@ def reaction_to_client_disconct(arg, client=None):
     print('client say disconnect in reason', arg)
     clients[client.netdat.id].delete_timrs()
     if client.playerclass != None:
+        levels[client.level].del_player(client.playerclass)
         levels[client.level].delete_object(client.playerclass)
+        
     clients_lock.acquire()
     del clients[client.netdat.id]
     clients_lock.release() 
@@ -232,19 +258,39 @@ def reaction_to_client_disconct(arg, client=None):
 def to_start_game(arg, client=None):
     client.netdat.send_request(8, '0', addition=start_game)
 
+def attach_client_to_level(client):
+    levels[client.level].clients.append(client)
+    send_level(client)
+    client.to_state(1)
 
+def attach_player_to_client(player, client):
+    client.netdat.send_request(14, str(player.uuid))
+    client.playerclass = player
+    client.netdat.send_request(14, str(player.uuid))
+    send_sync_data(client, player, param=['inventar'])
+    add_timer(timing(tim=time() + 1, lamb=sync_weapon, params=client))
 
 def start_game(arg, client=None):
     print('user start game')
     client.level= 0
-    pl = add_player(client.level, client)
-    send_level(client)
+    pl = add_player(client.level)
+    attach_client_to_level(client)
     
+    #send_level(client)
+    attach_player_to_client(pl, client)
     client.to_state(2)
-    client.netdat.send_request(14, str(pl.uuid))
-    send_sync_data(client, pl, param=['inventar'])
-    add_timer(timing(tim=time() + 1, lamb=sync_weapon, params=client))
+    client.need_send = True
 
+def respawn(arg, client=None):
+    if client.state == 2:
+        return
+    client.level= 0
+    pl = add_player(client.level)
+    attach_client_to_level(client)
+    attach_player_to_client(pl, client)
+
+    client.to_state(2)
+    client.netdat.send_request(8, '0')
     client.need_send = True
 
 def ping_retransmission(arg, client=None):
@@ -431,6 +477,8 @@ def sync_object(arg, client=None):
         print('error 1 in sync_object', arg)
         return 
     id = int(argt.pop(0))
+    if client.playerclass == None:
+        return
     if id != client.playerclass.uuid:
         print('error 2 in sync obj', arg)
         return
@@ -456,6 +504,8 @@ def send_new_pos(client, obj):
     client.netdat.send_data_funcs(11, str(obj.uuid) + ' ' + str(obj.pos.x) + ' ' + str(obj.pos.y))
 
 def get_move_obj(arg, client=None):
+    if client.playerclass == None:
+        return
     arg = arg.split()
     if len(arg) < 3:
         print('error 1 in get move obj')
@@ -589,7 +639,7 @@ functions[15] = parse_what_obj
 functions[16] = plyer_fire
 functions[17] = player_equip
 functions[18] = player_select_weapon
-
+functions[19] = respawn
 print('opening config file')
 if not os.path.isfile(config_file_name):
     print('config file not found. creating file')
@@ -646,6 +696,14 @@ class level():
     def __init__(self):
         self.players = []
         self.clients = []
+        self.entitys = []
+        self.grid = []
+        for y in range(all.game.gridsizy):
+            ou = [None] * all.game.gridsizx
+            for x in range(all.game.gridsizx):
+                ou[x] = flor(x, y)
+            self.grid.append(ou)
+
         self.dodelete = False
         self.reset()
 
@@ -661,6 +719,7 @@ class level():
         gm.add_gnerated_object = self.add_gnerated_object
         gm.add_object = self.add_object
         gm.delete_object = self.delete_object
+        gm.player_dead = self.player_dead
 
         
     def get_params(self, gm):
@@ -670,12 +729,20 @@ class level():
         self.cgrid = gm.cgrid
 
     def reset(self):
+        #for i in self.clients:
+        #    for y in range(all.game.gridsizy):
+        #        for x in range(all.game.gridsizx):
+        #            self.setcell(x, y, flor(x, y))
+        
         self.grid = []
         for y in range(all.game.gridsizy):
             ou = [None] * all.game.gridsizx
             for x in range(all.game.gridsizx):
                 ou[x] = flor(x, y)
             self.grid.append(ou)
+        
+        for e in self.entitys:
+            self.delete_object(e)
         self.entitys = []
         self.cgrid = []
         self.start_pos = (0, 0)
@@ -711,13 +778,27 @@ class level():
     def getplayers(self):
         return self.players
 
+    def player_dead(self, player):
+        for i in self.clients:
+            if i.playerclass == player:
+                detach_player(i)
+                self.del_player(player)
+                self.delete_object(player)
+
+    def add_player(self, player):
+        self.players.append(player)
+
+    def del_player(self, player):
+        self.players.remove(player)
+
+
     def add_gnerated_object(self, obj):
         obj.prx = obj.pos.x
         obj.pry = obj.pos.y
         if len(obj.net_params) > 5 and obj.net_params[5]:
             obj.lock = threading.Lock()
         obj.server_init()
-        print('addet obj', obj)
+        #print('addet obj', obj)
         self.entitys.append(obj)
 
         for i in self.clients:
@@ -746,19 +827,20 @@ def gen_level(level):
     level.get_params(all.game)
     print('gen_level')
 
-def add_player(levelid, client):
-    if len(levels[levelid].players) == 0:
-        gen_level(levels[levelid])
+def add_player(levelid):
+    #if len(levels[levelid].players) == 0:
+    #    gen_level(levels[levelid])
 
     pl = player(x=levels[levelid].start_pos[0] * all.game.cellsizx + 10, y=levels[levelid].start_pos[1] * all.game.cellsizy + 10)
     if all.game.playerweapon != None:
         pl.inventar[0] = all.game.playerweapon.construct()
         
     levels[levelid].add_gnerated_object(pl)
-    levels[levelid].players.append(pl)
-    levels[levelid].clients.append(client)
-    client.level = levelid
-    client.playerclass = pl
+    levels[levelid].add_player(pl)
+    #levels[levelid].players.append(pl)
+    #levels[levelid].clients.append(client)
+    #client.level = levelid
+    #client.playerclass = pl
 
     return pl
 
@@ -836,7 +918,7 @@ while True:
     clients_lock.release()
     dt = clock.tick()
     for lvl in levels:
-        if len(lvl.players) != 0:
+        if len(lvl.clients) != 0:
             lvl.set_params(all.game)
 
             for i in all.game.entitys:
