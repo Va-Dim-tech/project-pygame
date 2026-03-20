@@ -888,7 +888,7 @@ def get_surface(arg, **karg):
 
     bt = bytes()
     for i in res:
-        bt = bt + ord(i).to_bytes()
+        bt = bt + ord(i).to_bytes(1)
     
     all.client.surfacecinprocess[id][nom] = bt
     if None not in all.client.surfacecinprocess[id]:

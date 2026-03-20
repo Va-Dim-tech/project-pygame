@@ -842,7 +842,7 @@ class level():
 
 
     def add_player(self, player):
-        return
+
         self.players.append(player)
 
     def del_player(self, player):
