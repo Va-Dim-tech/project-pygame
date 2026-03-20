@@ -18,7 +18,7 @@ class client():
         self.netdat = None
         self.state = 0
         self.instantsend = True
-        self.addres = '0.0.0.0' 
+        self.addres = '127.0.0.1:55555'
         self.port = 55555
         self.mainsock = None
         self.prefered_buffer_len = 2000
@@ -49,10 +49,10 @@ class client():
         functions[12] = sync_obj
         functions[13] = get_surface
         functions[14] = set_player
-
+        functions[20] = rst_level
 
     def start(self):
-        connect('127.0.0.1:55555')
+        connect(self.addres)
 
         
 
@@ -296,6 +296,16 @@ def set_buffer_len(arg, client=None):
 def to_disconnect(arg, **keys):
     print('disconnection by reason:', arg)
     shutdown()
+
+def rst_level(arg, client=None):
+    for y in range(all.game.gridsizy):
+        for x in range(all.game.gridsizx):
+            all.game.setcell(x, y, flor(x, y))
+    all.game.playerclass = None
+    all.game.entitys = []
+    all.client.objects = {}
+
+
 
 def change_state(arg, client=None):
     try:

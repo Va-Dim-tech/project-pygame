@@ -580,7 +580,7 @@ class player(entity):
               
             c = all.game.getcell(int((self.pos.x + self.center.x) // all.game.cellsizx), int((self.pos.y + self.center.y) // all.game.cellsizy))
             if c != None and c.type == 'luck':
-                all.game.nextlevel()
+                all.game.nextlevel(self)
             c = poscolide(self.pos + self.center, ignor=self, white='item')
             if c != None and type(c.gun) is hert:
                 self.take_heal(c)

@@ -57,7 +57,7 @@ class client:
 
     def gen_timers(self):
         self.kp = add_timer(timing(tim=time() + mainconfig['kep_alive_time'], lamb=keep_alive, params=self))
-        self.pinger = add_timer(timing(tim=time() + mainconfig['pinging_time'], lamb=pinging, params=self))
+        self.pinger = add_timer(timing(tim=time(), lamb=pinging, params=self))
         #self.dead_timer = add_timer(timing(tim=time() + mainconfig['dead_time'], lamb=reaction_to_client_disconct, params='timeout', kparams={'client':self}))
 
     def delete_timrs(self):
@@ -107,13 +107,7 @@ def detach_player(client):
 def detach_client_from_level(client):
     clients_lock.acquire()
     levels[client.level].clients.remove(client)
-    for y in range(all.game.gridsizy):
-        for x in range(all.game.gridsizx):
-            client.netdat.send_request(7, str(grid_cells.index(flor)) + ' ' + str(x) + ' ' + str(y))
-
-    for i in levels[client.level].entitys:
-        send_del_obj(client, i)
-
+    client.netdat.send_request(20, '')
     client.need_send = True
     clients_lock.release()
     client.to_state(1)
@@ -151,21 +145,30 @@ def chek_client_version(ver):
 
 
 def send_data(client):
+    
     st = client.netdat.message_generator()
     if st != None:
         #print('sendet', st)
         mainsock.sendto(bytes(st, encoding='utf-8'), client.addres)
+
 
 def keep_alive(client):
     send_data(client)
     client.kp = add_timer(timing(tim=time() + mainconfig['kep_alive_time'], lamb=keep_alive, params=client))
 
 def pinging(client):
-    print('pinging', mainconfig['pinging_time'])
     client.netdat.send_data_funcs(5, str(time()))
     send_data(client)
     client.pinger = add_timer(timing(tim=time() + mainconfig['pinging_time'], lamb=pinging, params=client))
 
+
+def resend_data(client):
+
+    client.netdat.add_fix_func(client.netdat.ping)
+    print('loop start')
+    while client.netdat.tecMess > 0:
+        send_data(client)
+    print('loop end')
 
 def message_reciever():
     bufferlen = mainconfig['max_message_len']
@@ -202,23 +205,37 @@ def message_reciever():
         else:
             if clients[id].addres[0] != adr[0] or clients[id].addres[1] != adr[1]:
                 print('client change addr')
-#                clients[id].addres = adr
+                clients[id].addres = adr
 
             #print('get', st)
             st = clients[id].netdat.message_parser(st)
             if st != None:
 
-                clients[id].netdat.exec_all_functions(clients[id], st[1])
-                clients[id].netdat.exec_to_answer_funcs(clients[id], st[0])
-                clients[id].netdat.exec_data_funcs(clients[id], st[2])
+                try:
+                    clients[id].netdat.exec_all_functions(clients[id], st[1])
+                except BaseException as e:
+                    print('except in exec_all_functions', e)
+                try:
+                    clients[id].netdat.exec_to_answer_funcs(clients[id], st[0])
+                except BaseException as e:
+                    print('except in exec_to_answer_funcs', e)
+                try:
+                    clients[id].netdat.exec_data_funcs(clients[id], st[2])
+                except BaseException as e:
+                    print('except in exec_data_funcs', e)
+                
+                
                 if st[3] != clients[id].older_tim_fix:
+                    print(st[3], clients[id].older_tim_fix)
                     clients[id].older_tim_fix = st[3]
+                    
                     if clients[id].timr != None:
                         del_timer(clients[id].timr)
                         clients[id].timr= None 
                     if st[3] != 0:
-                        print('wit for resend', clients[id].netdat.ping)
-                        clients[id].timr = timing(tim=clients[id].older_tim_fix + clients[id].netdat.ping * 4, lamb=lambda x: clients[x].netdat.add_fix_func(clients[x].netdat.ping), params=id)
+                        print('wit for resend', time() -  clients[id].older_tim_fix + clients[id].netdat.ping * 4)
+
+                        clients[id].timr = timing(tim=clients[id].older_tim_fix + mainconfig['pinging_time'] * 2, lamb=resend_data, params=clients[id])
                         add_timer(clients[id].timr)
 
                 if clients[id].dead_timer != None:
@@ -321,7 +338,7 @@ def ping_retransmission(arg, client=None):
 def ping_get(arg, client=None):
     try:
         client.netdat.ping = abs(time() - float(arg)) / 2
-        print('ping get')
+        print('ping get', client.netdat.ping)
     except BaseException as e:
         print('ping except', e)
         return
@@ -762,6 +779,9 @@ class level():
         #        for x in range(all.game.gridsizx):
         #            self.setcell(x, y, flor(x, y))
         
+        for i in self.clients:
+            i.netdat.send_request(20, '')
+
         self.grid = []
         for y in range(all.game.gridsizy):
             ou = [None] * all.game.gridsizx
@@ -769,8 +789,8 @@ class level():
                 ou[x] = flor(x, y)
             self.grid.append(ou)
         
-        for e in self.entitys:
-            self.delete_object(e)
+        #for e in self.entitys:
+        #    self.delete_object(e)
 
         self.entitys = []
         self.cgrid = []
@@ -821,7 +841,8 @@ class level():
         self.players.append(player)
 
     def del_player(self, player):
-        self.players.remove(player)
+        if player in self.players:
+            self.players.remove(player)
 
     def nextlevel(self, pl):
         
@@ -912,10 +933,10 @@ def change_player_level(levelid, client):
     attach_client_to_level(client)
     #add_timer(timing(tim=time() + 3, lamb=attach_client_to_level, params=client))
 
-    #levels[levelid].add_gnerated_object(pl)
-    #levels[levelid].add_player(pl)
+    levels[levelid].add_gnerated_object(pl)
+    levels[levelid].add_player(pl)
     
-    #attach_player_to_client(pl, client)
+    attach_player_to_client(pl, client)
 
 def sync_weapon(client):
     print('weapon send')

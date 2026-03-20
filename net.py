@@ -1,4 +1,5 @@
 from time import time 
+from threading import Lock
 version = 0.01
 
 
@@ -28,7 +29,8 @@ functions = {0:None, # disconnected
              16:None, #player fire (1 or 0)
              17:None, # player equip
              18:None, #player select weapon
-             19:None #respawn player
+             19:None, #respawn player
+             20:None #reset level
              } 
 
 
@@ -58,7 +60,7 @@ class netdata:
         self.in_mes_func = [[]]
         self.messages = ['']
         self.Mlen = 500 
-
+        self.net_lock = Lock()
 
 
 
@@ -85,9 +87,11 @@ class netdata:
             errs.add(int(msg[(11+i*5):(16+i*5)]))
         tim = 0
         t = set()
+        netdat.net_lock.acquire()
         for i, j in netdat.sended.items():
             if i <= lirecv and i not in errs:
                 t.add(i)
+                print('recived', i)
                 continue
             if netdat.sended[i][3] == None:
                 continue
@@ -95,9 +99,10 @@ class netdata:
                 tim = netdat.sended[i][3]
             elif tim > netdat.sended[i][3]:
                 tim = netdat.sended[i][3]
+        
         for i in t:
             del netdat.sended[i]
-
+        netdat.net_lock.release()
 
         datstart = 11+errors*5
         funa = {} # answer [fun id answer, params]
@@ -113,7 +118,6 @@ class netdata:
                     return None
                 if msg[i+6] == 'a':
                     if not (msg[i+1:i+6].strip().isdigit() and msg[i+7:i+12].strip().isdigit() and msg[i+12:i+15].strip().isdigit()):
-                        print(msg[i+1:i+6], '|', msg[i+7:i+10], '|',msg[i+10:i+15], '|', sep='')
                         print('parse error 4 in mes', msg)
                         return None
                     s = [int(msg[i+7:i+12]), '']
@@ -198,6 +202,7 @@ class netdata:
 
     def message_generator(netdat):
         if len(netdat.messages) > 1:
+            
             st = netdat.messages.pop(0)
             fn = netdat.in_mes_func.pop(netdat.tecMess)
             netdat.tecMess -= 1
@@ -206,11 +211,11 @@ class netdata:
             netdat.messages[0] = ''
             fn = netdat.in_mes_func[netdat.tecMess]
             netdat.in_mes_func[netdat.tecMess] = []
-
+        netdat.net_lock.acquire()
         for i in fn:
             if i in netdat.sended:
                 netdat.sended[i][3] = time()
-
+        netdat.net_lock.release()
         for i in netdat.funcerrors:
             k = str(i)
             st = k + ' ' * (5 - len(k)) + st
@@ -235,7 +240,9 @@ class netdata:
         netdat.chk_msg(s)
         netdat.messages[netdat.tecMess] += s
         netdat.in_mes_func[netdat.tecMess].append(netdat.lastfunsend)
+        netdat.net_lock.acquire()
         netdat.sended[netdat.lastfunsend] = ['r', funame, params, None]
+        netdat.net_lock.release()
         if addition != None:
             netdat.funcs[netdat.lastfunsend] = addition
 
@@ -247,7 +254,9 @@ class netdata:
         netdat.chk_msg(s)
         netdat.messages[netdat.tecMess] += s
         netdat.in_mes_func[netdat.tecMess].append(netdat.lastfunsend)
+        netdat.net_lock.acquire()
         netdat.sended[netdat.lastfunsend] = ['a', funid, params, None]
+        netdat.net_lock.release()
 
     def send_data_funcs(netdat, funid, params):
         s = '2' + to_str_len(funid, 3) + to_str_len(len(params), 3) + params
@@ -257,6 +266,7 @@ class netdata:
     def add_fix_func(netdat, tim):
         print('fixing function')
         c = 0 # закоментировать все связанное с 'c' после отладки
+        netdat.net_lock.acquire()
         for i, j  in netdat.sended.items():
             if j[3] != None and abs(time() - j[3]) >= tim:
                 j[3] = time()
@@ -267,15 +277,18 @@ class netdata:
                     netdat.messages[netdat.tecMess] += s
                     print('fix addet', s)
                     #netdat.sended[i] = ['a', funid, params, None]
-                elif [0] == 'r':
-                    send_request(netdat, j[1], f[2])
+                elif j[0] == 'r':
+                    #send_request(netdat, j[1], f[2])
                     s = '1' + to_str_len(i, 5) + 'r' + to_str_len(j[1], 3) + to_str_len(len(j[2]), 3) + j[2]
                     netdat.chk_msg(s)
                     netdat.messages[netdat.tecMess] += s
+                    print('fix addet', s)
                     #netdat.sended[i] = ['r', funame, params, None]
-
-        if c != 0:
-            print('resend', c, 'functions')
+                else:
+                    print('fix send error 1', i, j)
+        netdat.net_lock.release()
+        print('resend', c, 'functions')
+        #print(netdat.messages)
 
     def exec_all_functions(netdat, client, funcs):
         for i, j in funcs.items():

@@ -5,6 +5,7 @@ datafiledir = 'data'
 # ofsetx ofsety sizex sizey count deltax deltay
 textures = {'menu_back': ['background.png', eror],
             'menu_start_btn': ['startbtn.png', eror, 1,[(0, 0, 125, 36, 2, 0, 36)]],
+            'menu_multiplayer_btn': ['miltiplayer_start.png', eror, 1,[(0, 0, 125, 36, 2, 0, 36)]],
             'pers': ['to menu.png', eror, 1],
             'wals': ['grid textures\walls.png', eror, 1, [(0, 0, 12, 12, 3, 12, 0)]],
             'player': ['unit textures\player.png', eror, 1],

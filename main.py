@@ -205,7 +205,7 @@ if __name__ == '__main__':
 
     all.hasload = True
     all.ubdatelist = []
-    all.toloadids = ['menu_back', 'menu_start_btn']
+    all.toloadids = ['menu_back', 'menu_start_btn', 'menu_multiplayer_btn']
 
     loadscene('menu')
     settings['up'] = pygame.key.key_code('w')
