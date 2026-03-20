@@ -108,6 +108,7 @@ class netdata:
         funa = {} # answer [fun id answer, params]
         funr = {} # response [fun id, params]
         data = set()
+        t = set()
         i = datstart
     
         mx = netdat.lastfuncid
@@ -132,7 +133,8 @@ class netdata:
                         continue
                     mx = max(mx, id)
                     funa[id] = s
-                    
+                    if id in netdat.funcerrors:
+                        t.add(id)
                 elif msg[i+6] == 'r':
                     if not (msg[i+1:i+6].strip().isdigit() and msg[i+7:i+10].strip().isdigit() and msg[i+10:i+13].strip().isdigit()):
                         print('parse error 4 in mes', msg)
@@ -149,7 +151,9 @@ class netdata:
                         continue
                     mx = max(mx, id)
                     funr[id] = s
-                    
+                    if id in netdat.funcerrors:
+                        t.add(id)
+                        
                 else:
                     print('parse error 3 in mes', msg)
                     return None
@@ -189,7 +193,6 @@ class netdata:
                     return None
                 netdat.funcerrors.append(i)
                 c += 1
-                
         
             er += 1
             if er > 1000:
@@ -197,7 +200,8 @@ class netdata:
                 return None
         if c != 0:
             print('not recieved', c, 'functions')
-
+        for i in t:
+            netdat.funcerrors.remove(i)
         netdat.lastfuncid = mx
         return (funa, funr, data, tim)
     

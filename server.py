@@ -153,10 +153,12 @@ def send_data(client):
 
 
 def keep_alive(client):
+    
     send_data(client)
     client.kp = add_timer(timing(tim=time() + mainconfig['kep_alive_time'], lamb=keep_alive, params=client))
 
 def pinging(client):
+    print('pinging')
     client.netdat.send_data_funcs(5, str(time()))
     send_data(client)
     client.pinger = add_timer(timing(tim=time() + mainconfig['pinging_time'], lamb=pinging, params=client))
