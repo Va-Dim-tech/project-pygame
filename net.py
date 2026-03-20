@@ -112,7 +112,8 @@ class netdata:
                     print('parse error 2.5 in mes', msg)
                     return None
                 if msg[i+6] == 'a':
-                    if not (msg[i+1:i+6].strip().isdigit() and msg[i+7:i+10].strip().isdigit() and msg[i+10:i+15].strip().isdigit()):
+                    if not (msg[i+1:i+6].strip().isdigit() and msg[i+7:i+12].strip().isdigit() and msg[i+12:i+15].strip().isdigit()):
+                        print(msg[i+1:i+6], '|', msg[i+7:i+10], '|',msg[i+10:i+15], '|', sep='')
                         print('parse error 4 in mes', msg)
                         return None
                     s = [int(msg[i+7:i+12]), '']
@@ -169,6 +170,7 @@ class netdata:
     
         er = 0
 
+
         # ну нету тут условной компиляции(вроде)
         c = 0 # закоментировать все связанное с 'c' после отладки
         while i != mx:
@@ -176,6 +178,9 @@ class netdata:
             if i > 99999:
                 i = 0
             if not (i in funa or i in funr):
+                if len(netdat.funcerrors) * 6 > netdat.Mlen:
+                    print('a lot errors', len(netdat.funcerrors))
+                    return None
                 netdat.funcerrors.append(i)
                 c += 1
                 
@@ -186,6 +191,7 @@ class netdata:
                 return None
         if c != 0:
             print('not recieved', c, 'functions')
+
         netdat.lastfuncid = mx
         return (funa, funr, data, tim)
     
@@ -253,18 +259,20 @@ class netdata:
         c = 0 # закоментировать все связанное с 'c' после отладки
         for i, j  in netdat.sended.items():
             if j[3] != None and abs(time() - j[3]) >= tim:
+                j[3] = time()
                 c += 1
                 if j[0] == 'a':
-                    s = '1' + to_str_len(i, 5) + 'a' + to_str_len(funid, 5) + to_str_len(len(params), 3) + params
+                    s = '1' + to_str_len(i, 5) + 'a' + to_str_len(j[1], 5) + to_str_len(len(j[2]), 3) + j[2]
                     netdat.chk_msg(s)
                     netdat.messages[netdat.tecMess] += s
-                    netdat.sended[i] = ['a', funid, params, None]
+                    print('fix addet', s)
+                    #netdat.sended[i] = ['a', funid, params, None]
                 elif [0] == 'r':
                     send_request(netdat, j[1], f[2])
-                    s = '1' + to_str_len(i, 5) + 'r' + to_str_len(funame, 3) + to_str_len(len(params), 3) + params
+                    s = '1' + to_str_len(i, 5) + 'r' + to_str_len(j[1], 3) + to_str_len(len(j[2]), 3) + j[2]
                     netdat.chk_msg(s)
                     netdat.messages[netdat.tecMess] += s
-                    netdat.sended[i] = ['r', funame, params, None]
+                    #netdat.sended[i] = ['r', funame, params, None]
 
         if c != 0:
             print('resend', c, 'functions')
@@ -288,7 +296,7 @@ class netdata:
             if j[0] not in netdat.funcs:
                 print('nothing to ansver to', j)
                 continue
-            #print('executing', netdat.funcs[j[0]])
+            print('executing', netdat.funcs[j[0]])
             try:
                 netdat.funcs[j[0]](j[1], client=client)
             except BaseException as e:

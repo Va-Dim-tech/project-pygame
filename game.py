@@ -458,7 +458,7 @@ class game():
     def end_game(self):
         main.changescene('menu')
 
-    def nextlevel(self):
+    def nextlevel(self, player):
 
         self.playerclass.level += 1
         while len(self.entitys) > 0:
@@ -528,7 +528,8 @@ class game():
                 self.tostate(1)
                 screen.blit(self.gameoverscreen2, (0, 0))
         if self.state == 1 or self.state == 2:
-            screen.blit(all.font.render('уровней пройдено: ' + str(self.playerclass.level), 1, (255, 255, 255)), (50, all.ysiz / 3))
+            if self.playerclass != None:
+                screen.blit(all.font.render('уровней пройдено: ' + str(self.playerclass.level), 1, (255, 255, 255)), (50, all.ysiz / 3))
             if self.newrecord:
                 screen.blit(all.font.render('Новый рекорд', 1, (255, 255, 255)), (50, all.ysiz / 3 + 50))
 

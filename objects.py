@@ -669,6 +669,9 @@ class player(entity):
             self.prx = self.pos.x
             self.pry = self.pos.y
             tocolision(self.coliscells, self.pos, self.cornpos, self)
+            c = all.game.getcell(int((self.pos.x + self.center.x) // all.game.cellsizx), int((self.pos.y + self.center.y) // all.game.cellsizy))
+            if c != None and c.type == 'luck':
+                all.game.nextlevel(self)
         if self.inventar[self.selected] != None:
             angle = (self.wiewin - self.pos).angle_to((1,0))
             self.gunpos = self.gunsdvg.rotate(angle)

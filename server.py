@@ -52,12 +52,13 @@ class client:
         self.pinger = None 
         self.dead_timer = None
         self.need_send = False
+        
 
 
     def gen_timers(self):
-        self.kp = add_timer(timing(tim=time() + mainocnfig['kep_alive_time'], lamb=keep_alive, params=client))
-        self.pinger = add_timer(timing(tim=time() + mainocnfig['pinging_time'], lamb=pinging, params=client))
-        self.dead_timer = add_timer(timing(tim=time() + mainocnfig['dead_time'], lamb=reaction_to_client_disconct, params='timeout', kparams={'client':clients[id]}))
+        self.kp = add_timer(timing(tim=time() + mainconfig['kep_alive_time'], lamb=keep_alive, params=self))
+        self.pinger = add_timer(timing(tim=time() + mainconfig['pinging_time'], lamb=pinging, params=self))
+        #self.dead_timer = add_timer(timing(tim=time() + mainconfig['dead_time'], lamb=reaction_to_client_disconct, params='timeout', kparams={'client':self}))
 
     def delete_timrs(self):
         if self.timr != None:
@@ -90,11 +91,17 @@ class client:
         self.state = state
 
 
-def detach_player(client):
+def gamover(client):
     clients_lock.acquire()
     client.to_state(1)
     client.netdat.send_request(8, '1')
     client.playerclass = None
+    clients_lock.release()
+
+def detach_player(client):
+    clients_lock.acquire()
+    client.netdat.send_request(14, '-1')
+    client.to_state(0)
     clients_lock.release()
 
 def detach_client_from_level(client):
@@ -105,7 +112,7 @@ def detach_client_from_level(client):
             client.netdat.send_request(7, str(grid_cells.index(flor)) + ' ' + str(x) + ' ' + str(y))
 
     for i in levels[client.level].entitys:
-        send_del_obj(client, obj)
+        send_del_obj(client, i)
 
     client.need_send = True
     clients_lock.release()
@@ -151,12 +158,13 @@ def send_data(client):
 
 def keep_alive(client):
     send_data(client)
-    client.kp = add_timer(timing(tim=time() + mainocnfig['kep_alive_time'], lamb=keep_alive, params=client))
+    client.kp = add_timer(timing(tim=time() + mainconfig['kep_alive_time'], lamb=keep_alive, params=client))
 
 def pinging(client):
+    print('pinging', mainconfig['pinging_time'])
     client.netdat.send_data_funcs(5, str(time()))
     send_data(client)
-    client.pinger = add_timer(timing(tim=time() + mainocnfig['pinging_time'], lamb=pinging, params=client))
+    client.pinger = add_timer(timing(tim=time() + mainconfig['pinging_time'], lamb=pinging, params=client))
 
 
 def message_reciever():
@@ -166,8 +174,8 @@ def message_reciever():
         st = None
         try:
             st, adr = mainsock.recvfrom(bufferlen)
-        except:
-            print('except in recvfrom')
+        except BaseException as e:
+            print('except in recvfrom', e)
         if st == None:
             continue
 
@@ -199,17 +207,20 @@ def message_reciever():
             #print('get', st)
             st = clients[id].netdat.message_parser(st)
             if st != None:
+
                 clients[id].netdat.exec_all_functions(clients[id], st[1])
                 clients[id].netdat.exec_to_answer_funcs(clients[id], st[0])
                 clients[id].netdat.exec_data_funcs(clients[id], st[2])
-
                 if st[3] != clients[id].older_tim_fix:
+                    clients[id].older_tim_fix = st[3]
                     if clients[id].timr != None:
                         del_timer(clients[id].timr)
                         clients[id].timr= None 
                     if st[3] != 0:
-                        clients[id].timr = timing(tim=time() + clients[id].netdat.ping * 2, lamb=lambda x: clients[x].netdat.add_fix_func(clients[x].ping), params=id)
+                        print('wit for resend', clients[id].netdat.ping)
+                        clients[id].timr = timing(tim=clients[id].older_tim_fix + clients[id].netdat.ping * 4, lamb=lambda x: clients[x].netdat.add_fix_func(clients[x].netdat.ping), params=id)
                         add_timer(clients[id].timr)
+
                 if clients[id].dead_timer != None:
                     del_timer(clients[id].dead_timer)
                 clients[id].dead_timer = timing(tim=time() + mainconfig['dead_time'], lamb=reaction_to_client_disconct, params='timeout', kparams={'client':clients[id]})
@@ -239,6 +250,7 @@ def on_buffer_len_get(arg, client=None):
     else:
         arg = client.netdat.Mlen
     client.netdat.send_request(4, str(arg), addition=to_start_game)
+    client.gen_timers()
     print('setting buffer size to', arg)
         
 
@@ -259,16 +271,19 @@ def to_start_game(arg, client=None):
     client.netdat.send_request(8, '0', addition=start_game)
 
 def attach_client_to_level(client):
+    clients_lock.acquire()
     levels[client.level].clients.append(client)
     send_level(client)
     client.to_state(1)
+    clients_lock.release()
 
 def attach_player_to_client(player, client):
+    clients_lock.acquire()
     client.netdat.send_request(14, str(player.uuid))
     client.playerclass = player
-    client.netdat.send_request(14, str(player.uuid))
     send_sync_data(client, player, param=['inventar'])
     add_timer(timing(tim=time() + 1, lamb=sync_weapon, params=client))
+    clients_lock.release()
 
 def start_game(arg, client=None):
     print('user start game')
@@ -284,14 +299,20 @@ def start_game(arg, client=None):
 def respawn(arg, client=None):
     if client.state == 2:
         return
-    client.level= 0
+    newlvl = 0
+    if client.level != newlvl:
+        detach_client_from_level(client)
+        client.level = newlvl
+        attach_client_to_level(client)
+    client.level = newlvl
     pl = add_player(client.level)
-    attach_client_to_level(client)
+    
     attach_player_to_client(pl, client)
 
     client.to_state(2)
     client.netdat.send_request(8, '0')
     client.need_send = True
+    return None
 
 def ping_retransmission(arg, client=None):
     client.netdat.send_data_funcs(6, arg)
@@ -299,9 +320,12 @@ def ping_retransmission(arg, client=None):
 
 def ping_get(arg, client=None):
     try:
-        client.netdat.ping = abc(time() - float(arg)) / 2
-    except:
+        client.netdat.ping = abs(time() - float(arg)) / 2
+        print('ping get')
+    except BaseException as e:
+        print('ping except', e)
         return
+
 
 
 Surfaces = []
@@ -668,6 +692,8 @@ class timing():
     def __init__(self, tim=0, lamb=None, params=None, kparams=None):
         self.tim = tim
         self.lamb = lamb
+        if type(params) != tuple:
+            params = tuple([params])
         self.params = params
         self.kparams = kparams
 
@@ -685,6 +711,8 @@ def add_timer(t):
     return t
 
 def del_timer(t):
+    if t not in timers:
+        return
     timlock.acquire()
     timers.remove(t)
     timlock.release()
@@ -720,7 +748,7 @@ class level():
         gm.add_object = self.add_object
         gm.delete_object = self.delete_object
         gm.player_dead = self.player_dead
-
+        gm.nextlevel = self.nextlevel
         
     def get_params(self, gm):
         self.grid = gm.grid
@@ -743,6 +771,7 @@ class level():
         
         for e in self.entitys:
             self.delete_object(e)
+
         self.entitys = []
         self.cgrid = []
         self.start_pos = (0, 0)
@@ -781,15 +810,30 @@ class level():
     def player_dead(self, player):
         for i in self.clients:
             if i.playerclass == player:
+                gamover(i)
                 detach_player(i)
                 self.del_player(player)
                 self.delete_object(player)
+                return
+
 
     def add_player(self, player):
         self.players.append(player)
 
     def del_player(self, player):
         self.players.remove(player)
+
+    def nextlevel(self, pl):
+        
+        for i in self.clients:
+            if i.playerclass == pl:
+                newlvl = i.level + 1
+                if newlvl >= len(levels):
+                    newlvl = 0
+                add_timer(timing(tim=time(), lamb=change_player_level, params=(newlvl, i)))
+                #change_player_level(newlvl, i)
+                return
+
 
 
     def add_gnerated_object(self, obj):
@@ -848,14 +892,30 @@ def get_next_player_level(client):
     return (client.level + 1) % len(levels)
 
 def change_player_level(levelid, client):
-    if len(levels[levelid].players) == 0:
-        gen_level(levels[levelid])
-    levels[levelid].add_gnerated_object(client.playerclass)
-    levels[levelid].players.append(client.playerclass)
-    levels[levelid].clients.append(client)
+    print('change_player_level')
 
-    levels[client.level].delete_object(client.playerclass)
-    levels[client.level].clients
+    pl = client.playerclass
+
+    detach_player(client)
+    detach_client_from_level(client)
+
+    levels[client.level].del_player(pl)
+    levels[client.level].delete_object(pl)
+    levels[client.level].entitys.remove(pl)
+
+    pl.live = True
+
+    client.level = levelid
+
+    if len(levels[levelid].clients) == 0:
+        gen_level(levels[levelid])
+    attach_client_to_level(client)
+    #add_timer(timing(tim=time() + 3, lamb=attach_client_to_level, params=client))
+
+    #levels[levelid].add_gnerated_object(pl)
+    #levels[levelid].add_player(pl)
+    
+    #attach_player_to_client(pl, client)
 
 def sync_weapon(client):
     print('weapon send')
@@ -904,9 +964,9 @@ while True:
     t = time()
     while (len(timers) > 0 and timers[0].tim < time()):
         if timers[0].kparams != None:
-            timers[0].lamb(timers[0].params, **timers[0].kparams)
+            timers[0].lamb(*timers[0].params, **timers[0].kparams)
         else:
-            timers[0].lamb(timers[0].params)
+            timers[0].lamb(*timers[0].params)
         del_timer(timers[0])
 
 
@@ -973,7 +1033,13 @@ while True:
             if all.game.lazyenid >= len(all.game.lazyenemy):
                 all.game.lazyenid = -1
             else:
-                all.game.lazyenemy[all.game.lazyenid].lazy()
+                if len(all.game.lazyenemy[all.game.lazyenid].net_params) > 5 and all.game.lazyenemy[all.game.lazyenid].net_params[5]:
+                    all.game.lazyenemy[all.game.lazyenid].lock.acquire()
+                    all.game.lazyenemy[all.game.lazyenid].lazy()
+                    all.game.lazyenemy[all.game.lazyenid].lock.release()
+                else:
+                    all.game.lazyenemy[all.game.lazyenid].lazy()
+
 
 
 

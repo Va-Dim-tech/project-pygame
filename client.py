@@ -21,14 +21,16 @@ class client():
         self.addres = '0.0.0.0' 
         self.port = 55555
         self.mainsock = None
-        self.prefered_buffer_len = 5000
+        self.prefered_buffer_len = 2000
         self.game = None
         self.keep_alive_time = 2
         self.keep_alive_time_t = time()
         self.ping_time= 2
         self.ping_time_t = 0
+        self.ping = 10
         self.dead_time = 5
         self.dead_time_t = time()
+        self.last_not_recived = 0
         self.objects = {} #id:obj
         self.ldtextures= {}
         self.snctextures = {}
@@ -99,6 +101,8 @@ class client():
             send_data()
             print('ping sendet')
              
+
+
         if self.game.state == 0:
             if self.game.playerclass != None:
                 buttons = pygame.key.get_pressed()
@@ -190,7 +194,11 @@ def message_reciever():
             cli.netdat.exec_to_answer_funcs(cli.netdat, st[0])
             cli.netdat.exec_data_funcs(cli.netdat, st[2])
             cli.dead_time_t = time()
-
+            cli.last_not_recived = st[3]
+            if cli.last_not_recived != 0:
+                if abs(time() - cli.last_not_recived) > (cli.netdat.ping * 4):
+                    cli.netdat.add_fix_func(cli.netdat.ping)
+                    cli.need_send = True
             if ints:
                 send_data()
 
@@ -199,7 +207,7 @@ def message_reciever():
 def send_data():
     st = all.client.netdat.message_generator()
     if st != None:
-        #print('sendet', st)
+        print('sendet', st)
         all.client.mainsock.sendto(bytes(st, encoding='utf-8'), (all.client.addres, all.client.port))
 
     
@@ -312,81 +320,6 @@ def set_grid(arg, **keys):
         return None
     all.game.setcell(x, y, grid_cells[i](x, y))
 
-# old
-def generator_for_set_new_obj(mas, c):
-    if c[0] == '<':
-        c = int(c[1:])
-        if len(other_objects) <= c:
-            print('error 1 in generator_for_set_new_obj')
-            return None
-        id = other_objects[c]
-        params = []
-        while len(mas) > 0:
-            c = mas.pop(0).split(':')
-            if c[0] == 'params':
-                if c[1][0] == 'S':
-                    c = int(c[1][1:])
-                    if c not in all.client.ldtextures:
-                        all.client.netdat.send_request(13, str(c), addition=get_surface)
-                        params.append(generateeror())
-                    else:
-                        params.append(all.client.ldtextures[c])
-                elif c[1][0] == '<':
-                    params.append(generator_for_set_new_obj(mas, c[1]))
-                elif c[1][0] == 'i':
-                    if '.' in c[1]:
-                        params.append(float(c[1][1:]))
-                    else:
-                        params.append(int(c[1][1:]))
-                else:
-                    params.append(c[1])
-            if c[-1] == '>':
-                return id(*params)
-
-# old 
-def set_new_object(arg, **keys):
-    argl = arg.split()
-    argt = argl.copy()
-    if len(argl) < 4:
-        print('error 1 in set new object', arg)
-        return
-    try:
-        argt[0] = int(argl.pop(0))
-        argt[1] = int(argl.pop(0))
-        argt[2] = float(argl.pop(0))
-        argt[3] = float(argl.pop(0))
-    except:
-        print('error 2 in set new object', arg)
-        return
-    if not(0 <= argt[0] < len(objects)):
-        print('error 3 in set new object', arg)
-        return
-    print('uuid is', argt[1], 'in', arg)
-    params = []
-    while len(argl) > 0:
-        a = argl.pop(0)
-        c = a.split(':')
-        if c[0] == 'param':
-            if c[1][0] == 'S':
-                c = int(c[1][1:])
-                if c not in all.client.ldtextures:
-                    all.client.netdat.send_request(13, str(c), addition=get_surface)
-                    params.append(generateeror())
-                else:
-                    params.append(all.client.ldtextures[c])
-            elif c[1][0] == '<':
-                params.append(generator_for_set_new_obj(argl, c[1]))
-            else:
-                if '.' in c[1]:
-                    params.append(float(c[1]))
-                else:
-                    params.append(int(c[1]))
-
-    obj = objects[argt[0]](x=argt[2], y=argt[3], *params)
-    obj.uuid = argt[1]
-    all.client.objects[argt[1]] = obj
-    all.client.game.add_gnerated_object(obj)
-    
 
 def parser_for_set_new_obj(i, arg):
     if i >= len(arg):
@@ -473,7 +406,7 @@ def parser_for_set_new_obj(i, arg):
 
 
 def set_new_obj(arg, **karg):
-    #print('new obj', arg)
+    print('new obj', arg)
     if len(arg) < 6:
         print('set new object: error is too small in', srg)
         return
@@ -559,102 +492,9 @@ def move_object(arg, **keys):
     all.client.objects[argt[0]].set_pos(argt[1], argt[2])
     
 
-# old
-def parser_for_sync_objects(obj, argt, c):
-    
-    if c[1][0] == 'S':
-        id = int(c[1][1:])
-        if id not in all.client.ldtexttures:
-            all.client.netdat.send_request(13, str(id))
-            setattr(obj, c[0], generateeror())
-        else:
-            setattr(obj, c[0], all.client.ldtexttures[id])
-    elif c[1][0] == '{':
-        ob = getattr(obj, c[0])
-        if ob == None:
-            print('error 1 parser_for_sync_objects')
-            return
-        i = argt.pop(0)
-        while len(argt) > 0 and i[-1] != '}':
-            i = i.split(':')
-            parser_for_sync_objects(ob, argt, i)
-            i = argt.pop(0)
-            
-
-    elif c[1][0] == '[':
-        if '[0]' in c[1]:
-            print(argt)
-
-
-        i = 0
-        t = argt.pop(0)
-        while len(argt) > 0 and t[-1] != ']':
-            if t[0] == 'S':
-                id = int(t[1:])
-                if id not in all.client.ldtextures:
-                    all.client.netdat.send_request(13, str(id), addition=get_surface)
-                    getattr(obj, c[0])[i] = generateeror()
-                else:
-                    getattr(obj, c[0])[i] = all.client.ldtextures[id]
-            elif t[0] == '{':
-                ob = getattr(obj, c[0])[i]
-                if ob == None:
-                    print('error 2 in parser_for_sync_objects response for what is it')
-                    all.client.netdat.send_data_funcs(15, str(obj.uuid) + ' ' + str(c[0]) + ':[' + str(i) + ']')
-                    while len(argt) > 0 and argt.pop(0)[-1] != '}':
-                        pass
-                    continue
-                k = argt.pop(0)
-                while len(argt) > 0 and k[-1] != '}':
-                    k = k.split(':')
-                    parser_for_sync_objects(ob, argt, k)
-                    k = argt.pop(0)
-            elif t[0] == '<':
-                getattr(obj, c[0])[i] = generator_for_set_new_obj(argt, t)
-                argt.pop(0)
-            elif c[1][1].isdigit():
-                getattr(obj, c[0])[int([0][1:-2])] = generator_for_set_new_obj(argt, t)
-    elif c[1][0] == '<':
-        setattr(obj, c[0], generator_for_set_new_obj(argt, c[1])) 
-        argt.pop(0)
-    elif c[1][0] == 'V':
-        x = float(c[1][1:])
-        y = float(argt.pop(0))
-        c = getattr(obj, c[0])
-        c.x = x
-        c.y = y
-
-    
-    elif c[1][0] == 'i':
-        if '.' in c[1]:
-            setattr(obj, c[0], float(c[1]))
-        else:
-            setattr(obj, c[0], int(c[1]))
-    else:
-        print('adding str', c)
-        setattr(obj, c[0], c[1])
-
 
    
-# old
-def sync_object(arg, **keys):
-    print(arg)
-    argt = arg.split()
-    print(argt)
-    if len(argt) < 1:
-        print('error 1 in sync_object', arg)
-        return 
-    id = int(argt.pop(0))
-    if id not in all.client.objects:
-        print('error 2 in sync obj', arg)
-        return
-    obj = all.client.objects[id]
 
-    
-    while len(argt) > 0:
-        i = argt.pop(0)
-        i = i.split(':')
-        parser_for_sync_objects(obj, argt, i)
 
 def generator_for_sync_obj(i, arg, obj, param, aobj):
     if i >= len(arg):
@@ -907,6 +747,10 @@ def sync_obj(arg, **karg):
 
 
 def set_player(arg, **keys):
+    if arg == '-1':
+        print('set playerclass None')
+        all.client.game.playerclass = None
+        return
     if not arg.strip().isdigit():
         print('error 1 in set player')
         return
@@ -929,6 +773,7 @@ def del_obj(arg, **keys):
     if arg not in all.client.objects:
         print('deleting not existing entity')
         return
+    print('del object')
     delete_object(arg)
 
     
