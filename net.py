@@ -65,7 +65,7 @@ class netdata:
 
 
     def message_parser(netdat, msg):
-        print(msg)
+        #print(msg)
         if len(msg) < 11:
             print('parse rror 0 in mes', msg)
             return None
@@ -127,11 +127,12 @@ class netdata:
                         return None
                     s[1] = msg[i+15:i+15+params]
                     id = int(msg[i+1:i+6].strip())
+                    i += 15 + params
                     if id < netdat.lastfuncid and id not in netdat.funcerrors:
                         continue
                     mx = max(mx, id)
                     funa[id] = s
-                    i += 15 + params
+                    
                 elif msg[i+6] == 'r':
                     if not (msg[i+1:i+6].strip().isdigit() and msg[i+7:i+10].strip().isdigit() and msg[i+10:i+13].strip().isdigit()):
                         print('parse error 4 in mes', msg)
@@ -143,11 +144,12 @@ class netdata:
                         return None
                     s[1] = msg[i+13:i+13+params]
                     id = int(msg[i+1:i+6].strip())
+                    i += 13 + params
                     if id < netdat.lastfuncid and id not in netdat.funcerrors:
                         continue
                     mx = max(mx, id)
                     funr[id] = s
-                    i += 13 + params
+                    
                 else:
                     print('parse error 3 in mes', msg)
                     return None
@@ -269,7 +271,8 @@ class netdata:
         netdat.net_lock.acquire()
         for i, j  in netdat.sended.items():
             if j[3] != None and abs(time() - j[3]) >= tim:
-                j[3] = time()
+                netdat.sended[i][3] = time()
+                
                 c += 1
                 if j[0] == 'a':
                     s = '1' + to_str_len(i, 5) + 'a' + to_str_len(j[1], 5) + to_str_len(len(j[2]), 3) + j[2]

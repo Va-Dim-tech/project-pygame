@@ -91,6 +91,7 @@ class client():
 
     def ubdate(self, dt):
         if abs(time() - self.dead_time_t) > self.dead_time:
+            pass
             disconnect('timeout')
         if abs(time() - self.keep_alive_time_t) > self.keep_alive_time:
             self.keep_alive_time_t = time()
@@ -207,7 +208,7 @@ def message_reciever():
 def send_data():
     st = all.client.netdat.message_generator()
     if st != None:
-        print('sendet', st)
+        #print('sendet', st)
         all.client.mainsock.sendto(bytes(st, encoding='utf-8'), (all.client.addres, all.client.port))
 
     

@@ -165,6 +165,9 @@ def pinging(client):
 def resend_data(client):
 
     client.netdat.add_fix_func(client.netdat.ping)
+    client.timr = None
+
+    return
     print('loop start')
     while client.netdat.tecMess > 0:
         send_data(client)
@@ -224,7 +227,8 @@ def message_reciever():
                 except BaseException as e:
                     print('except in exec_data_funcs', e)
                 
-                
+                #if clients[id].timr == None:
+                #    if st[3] != 0:
                 if st[3] != clients[id].older_tim_fix:
                     print(st[3], clients[id].older_tim_fix)
                     clients[id].older_tim_fix = st[3]
@@ -838,6 +842,7 @@ class level():
 
 
     def add_player(self, player):
+        return
         self.players.append(player)
 
     def del_player(self, player):
