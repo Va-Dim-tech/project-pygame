@@ -65,7 +65,7 @@ class netdata:
 
 
     def message_parser(netdat, msg):
-        #print(msg)
+        print(msg)
         if len(msg) < 11:
             print('parse rror 0 in mes', msg)
             return None
