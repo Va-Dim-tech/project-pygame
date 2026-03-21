@@ -20,7 +20,7 @@ class menu():
         self.startbtnrect.x = varsclass.xsiz / 3
         self.startbtnrect.y = varsclass.ysiz / 4
         self.startbtnsel = False
-        self.addr_text = varsclass.client.addres 
+        self.addr_text = varsclass.client.addres + ':' + str(varsclass.client.port)
 
         updaterecord()
 

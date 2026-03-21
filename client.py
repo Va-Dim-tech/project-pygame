@@ -18,10 +18,10 @@ class client():
         self.netdat = None
         self.state = 0
         self.instantsend = True
-        self.addres = '127.0.0.1:55555'
+        self.addres = '127.0.0.1'
         self.port = 55555
         self.mainsock = None
-        self.prefered_buffer_len = 2000
+        self.prefered_buffer_len = 5000
         self.game = None
         self.keep_alive_time = 2
         self.keep_alive_time_t = time()

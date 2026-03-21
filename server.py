@@ -81,9 +81,9 @@ class client:
         if state == 0:
             self.instantsend = False
         elif state == 1:
-            pass
+            self.instantsend = False
         elif state == 2:
-            pass
+            self.instantsend = False
         elif state == 3:
             self.instantsend = True
 
@@ -900,8 +900,8 @@ def gen_level(level):
     print('gen_level')
 
 def add_player(levelid):
-    #if len(levels[levelid].players) == 0:
-    #    gen_level(levels[levelid])
+    if len(levels[levelid].clients) == 0:
+        gen_level(levels[levelid])
 
     pl = player(x=levels[levelid].start_pos[0] * all.game.cellsizx + 10, y=levels[levelid].start_pos[1] * all.game.cellsizy + 10)
     if all.game.playerweapon != None:
@@ -921,6 +921,9 @@ def get_next_player_level(client):
 
 def change_player_level(levelid, client):
     print('change_player_level')
+    if len(levels[levelid].clients) == 0:
+        gen_level(levels[levelid])
+
 
     pl = client.playerclass
 
@@ -935,8 +938,8 @@ def change_player_level(levelid, client):
 
     client.level = levelid
 
-    if len(levels[levelid].clients) == 0:
-        gen_level(levels[levelid])
+    #if len(levels[levelid].clients) == 0:
+    #    gen_level(levels[levelid])
     attach_client_to_level(client)
     #add_timer(timing(tim=time() + 3, lamb=attach_client_to_level, params=client))
 
@@ -1008,47 +1011,49 @@ while True:
     for lvl in levels:
         if len(lvl.clients) != 0:
             lvl.set_params(all.game)
+            try:
+                for i in all.game.entitys:
 
-            for i in all.game.entitys:
-
-                if i.net_params[3][0]:
-                    i.sync = False
-                    if i.net_params[3][1]:
-                        if len(i.net_params) > 5 and i.net_params[5]:
-                            i.lock.acquire()
+                    if i.net_params[3][0]:
+                        i.sync = False
+                        if i.net_params[3][1]:
+                            if len(i.net_params) > 5 and i.net_params[5]:
+                                i.lock.acquire()
+                                i.ubdate(dt)
+                                i.lock.release()
+                            else:
+                                i.ubdate(dt)
+                        if i.net_params[0][0]:
+                            if len(i.net_params) > 5 and i.net_params[5]:
+                                i.lock.acquire()
+                                i.server_update(dt)
+                                i.lock.release()
+                            else:
+                                i.server_update(dt)
+                        if i.sync:
+                            clients_lock.acquire()
+                            for j in lvl.clients:
+                                j.need_send = True
+                                send_new_pos(j, i)
+                                send_sync_data(j, i)
+                            clients_lock.release()
+                    else:
+                        if i.net_params[3][1]:
                             i.ubdate(dt)
-                            i.lock.release()
-                        else:
-                            i.ubdate(dt)
-                    if i.net_params[0][0]:
-                        if len(i.net_params) > 5 and i.net_params[5]:
-                            i.lock.acquire()
+                        if i.net_params[0][0]:
                             i.server_update(dt)
-                            i.lock.release()
-                        else:
-                            i.server_update(dt)
-                    if i.sync:
-                        clients_lock.acquire()
-                        for j in lvl.clients:
-                            j.need_send = True
-                            send_new_pos(j, i)
-                            send_sync_data(j, i)
-                        clients_lock.release()
-                else:
-                    if i.net_params[3][1]:
-                        i.ubdate(dt)
-                    if i.net_params[0][0]:
-                        i.server_update(dt)
-                    if abs(i.prx - i.pos.x) > 10 or abs(i.pry - i.pos.y) > 10:
-                        i.prx = i.pos.x
-                        i.pry = i.pos.y
-                        clients_lock.acquire()
-                        for j in lvl.clients:
-                            j.need_send = True
-                            send_new_pos(j, i)
-                            send_sync_data(j, i)
+                        if abs(i.prx - i.pos.x) > 10 or abs(i.pry - i.pos.y) > 10:
+                            i.prx = i.pos.x
+                            i.pry = i.pos.y
+                            clients_lock.acquire()
+                            for j in lvl.clients:
+                                j.need_send = True
+                                send_new_pos(j, i)
+                                send_sync_data(j, i)
 
-                        clients_lock.release()
+                            clients_lock.release()
+            except BaseException as e:
+                print('except in enity update', e)
             if lvl.dodelete:
                 lvl.dodelete = False
                 i = 0 
@@ -1061,13 +1066,17 @@ while True:
             if all.game.lazyenid >= len(all.game.lazyenemy):
                 all.game.lazyenid = -1
             else:
-                if len(all.game.lazyenemy[all.game.lazyenid].net_params) > 5 and all.game.lazyenemy[all.game.lazyenid].net_params[5]:
-                    all.game.lazyenemy[all.game.lazyenid].lock.acquire()
-                    all.game.lazyenemy[all.game.lazyenid].lazy()
-                    all.game.lazyenemy[all.game.lazyenid].lock.release()
-                else:
-                    all.game.lazyenemy[all.game.lazyenid].lazy()
+                try:
+                    if len(all.game.lazyenemy[all.game.lazyenid].net_params) > 5 and all.game.lazyenemy[all.game.lazyenid].net_params[5]:
+                        all.game.lazyenemy[all.game.lazyenid].lock.acquire()
+                    
+                        all.game.lazyenemy[all.game.lazyenid].lazy()
 
+                        all.game.lazyenemy[all.game.lazyenid].lock.release()
+                    else:
+                        all.game.lazyenemy[all.game.lazyenid].lazy()
+                except BaseException as e:
+                    print('error in lazy update')
 
 
 

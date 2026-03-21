@@ -65,7 +65,7 @@ class netdata:
 
 
     def message_parser(netdat, msg):
-        print(msg)
+        #print(msg)
         if len(msg) < 11:
             print('parse rror 0 in mes', msg)
             return None
@@ -91,7 +91,7 @@ class netdata:
         for i, j in netdat.sended.items():
             if i <= lirecv and i not in errs:
                 t.add(i)
-                print('recived', i)
+                #print('recived', i)
                 continue
             if netdat.sended[i][3] == None:
                 continue
@@ -282,14 +282,14 @@ class netdata:
                     s = '1' + to_str_len(i, 5) + 'a' + to_str_len(j[1], 5) + to_str_len(len(j[2]), 3) + j[2]
                     netdat.chk_msg(s)
                     netdat.messages[netdat.tecMess] += s
-                    print('fix addet', s)
+                    #print('fix addet', s)
                     #netdat.sended[i] = ['a', funid, params, None]
                 elif j[0] == 'r':
                     #send_request(netdat, j[1], f[2])
                     s = '1' + to_str_len(i, 5) + 'r' + to_str_len(j[1], 3) + to_str_len(len(j[2]), 3) + j[2]
                     netdat.chk_msg(s)
                     netdat.messages[netdat.tecMess] += s
-                    print('fix addet', s)
+                    #print('fix addet', s)
                     #netdat.sended[i] = ['r', funame, params, None]
                 else:
                     print('fix send error 1', i, j)

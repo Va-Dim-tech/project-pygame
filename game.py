@@ -427,9 +427,9 @@ class game():
 
     def eventer(self, event):
         if self.playerclass != None:
-            if event.type == pygame.MOUSEMOTION:
+            #if event.type == pygame.MOUSEMOTION:
                 
-                self.playerclass.cursorubdate(all.curpos - self.curvec)
+                #self.playerclass.cursorubdate(all.curpos - self.curvec)
 
             if event.type == pygame.MOUSEBUTTONUP:
                 self.playerclass.offclick()
@@ -673,6 +673,7 @@ class gun():
         self.bullet = bullet
         self.name = name
         self.sdvig = pygame.Vector2(0, 0)
+        self.draw_offset = pygame.Vector2(-self.sdvig.x, -self.sdvig.y)
         self.size = (0, 0)
         self.mirored = False
         self.fired = False
@@ -684,12 +685,17 @@ class gun():
     def rotate(self, angle):
         if self.usedim != None:
             self.drawedim = pygame.transform.rotate(self.usedim, angle)
+            rect = self.usedim.get_rect()
+            self.draw_offset = (pygame.Vector2(rect.center[0], rect.center[1]) - self.sdvig).rotate(-angle)
+            rect = self.drawedim.get_rect(center=(0,0))
+            self.draw_offset = self.draw_offset + (rect[0], rect[1])
         self.angle = angle
     
 
     def draw(self, screen, pos):
         if self.drawedim != None:
-            screen.blit(self.drawedim, self.sdvig + pos)
+            #screen.blit(self.drawedim, self.sdvig + pos)
+            screen.blit(self.drawedim, self.draw_offset + pos)
 
     def on_sync_get(self):
         self.updateimage()

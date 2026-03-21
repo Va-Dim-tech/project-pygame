@@ -414,10 +414,10 @@ class player(entity):
         self.arm = all.game.playerarm
         self.armdraw = self.arm
         self.armvec = pygame.Vector2(1, 0)
-        self.armdist = 20
+        self.armdist = 5
         self.armforvard = pygame.Vector2(7, 0)
         self.armsdvg = pygame.Vector2(9, 0)
-        self.gunsdvg = pygame.Vector2(20, 0)
+        self.gunsdvg = pygame.Vector2(self.armdist, 0)
         self.gunpos = pygame.Vector2(0, 0)
         self.guncorect = pygame.Vector2(0, 0)
         self.cornpos = pygame.Vector2(all.game.cellsizx, all.game.cellsizy)
@@ -449,6 +449,7 @@ class player(entity):
         self.pry = self.pos.y
         self.tx = self.pos.x
         self.ty = self.pos.y
+        self.lasangle = 0
         self.server = False
 
     def server_init(self):
@@ -478,64 +479,47 @@ class player(entity):
         screen.blit(self.eye, pos + self.center + self.righteye + (self.wiewin - (self.pos + self.center)) / 90)
         screen.blit(self.month, pos + self.center + self.monthsdvg + (self.wiewin - (self.pos + self.center)) / 130)
         screen.blit(self.armdraw, pos + self.center + self.armvec + self.armsdvg)
-
+        
+        if self.lasangle != self.wiewin.angle_to((1,0)):
+            #print(self.guncorect, self.gunpos)
+            self.lasangle = self.wiewin.angle_to((1,0))
+            self.cursorubdate(self.wiewin - (self.pos+ self.center))
         if self.inventar[self.selected] != None:
-            self.inventar[self.selected].draw(screen, pos + self.center + self.armsdvg + self.guncorect)
+            self.inventar[self.selected].draw(screen, pos + self.center + self.armvec + self.armsdvg)
+            #pos + self.center + self.armsdvg + self.armvec +self.gunpos
         if self.itemselected != None:
-            
             screen.blit(textures['gui'][1][1][0], pos + (self.itemselected.pos - self.pos) + self.itemsdvg)
 
     def cursorubdate(self, vec):
         
         angle = vec.angle_to((1,0))
-
+        
         self.armvec = self.armforvard.rotate(angle)
         self.gunpos = self.gunsdvg.rotate(angle)
         self.gunpos.y = -self.gunpos.y
         self.armvec.y = -self.armvec.y
         self.armdraw = pygame.transform.rotate(self.arm, angle)
-
+        
+        
+        
         if self.inventar[self.selected] != None:
-            
             if abs(angle) > 90:
                 if self.inventar[self.selected] != None:
                     self.inventar[self.selected].miror(True)
                     self.inventar[self.selected].rotate(angle)
-                
-                self.guncorect.update(0, 0)
-                
-
-                if angle > 90:
-                    angle2 = 180 - angle
-                    self.guncorect.x = -self.inventar[self.selected].size[0] * math.cos(math.radians(angle2)) - self.inventar[self.selected].size[1] * math.cos(math.radians(90 - angle2))
-                    self.guncorect.y = -self.inventar[self.selected].size[0] * math.sin(math.radians(angle2))
-
-                elif angle < -90:
-                    angle2 = abs(angle) - 90
-                    self.guncorect.x = - self.inventar[self.selected].size[0] * math.cos(math.radians(90 - angle2))
-                    self.guncorect.y = 0
-
 
             else:
                 self.inventar[self.selected].miror(False)
-                self.inventar[self.selected].rotate(angle)
+                self.inventar[self.selected].rotate(angle) 
                 
-                if angle > 0:
-
-                    self.guncorect.x = 0
-                    self.guncorect.y = -self.inventar[self.selected].size[0] * math.sin(math.radians(angle))
-                    
-                elif angle < 0:
-                    self.guncorect.x = -self.inventar[self.selected].size[1] * math.cos(math.radians(90 + angle))
-                    self.guncorect.y = 0
-        if self.inventar[self.selected] != None:
-            self.guncorect = self.guncorect + self.inventar[self.selected].sdvig.rotate(180 - angle)
+        #if self.inventar[self.selected] != None:
+        #    self.guncorect = self.guncorect + self.inventar[self.selected].sdvig.rotate(180 - angle)
 
 
     def fire(self):
         print('need')
         if self.inventar[self.selected] != None:
-            self.inventar[self.selected].fire(self.pos + self.center + self.armsdvg + self.guncorect, self.gunpos, self)
+            self.inventar[self.selected].fire(self.pos + self.center, self.center, self)
 
     def onclick(self):
         self.clicked = True
