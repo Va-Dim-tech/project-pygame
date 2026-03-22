@@ -158,7 +158,7 @@ def keep_alive(client):
     client.kp = add_timer(timing(tim=time() + mainconfig['kep_alive_time'], lamb=keep_alive, params=client))
 
 def pinging(client):
-    print('pinging')
+    #print('pinging')
     client.netdat.send_data_funcs(5, str(time()))
     send_data(client)
     client.pinger = add_timer(timing(tim=time() + mainconfig['pinging_time'], lamb=pinging, params=client))
@@ -344,7 +344,7 @@ def ping_retransmission(arg, client=None):
 def ping_get(arg, client=None):
     try:
         client.netdat.ping = abs(time() - float(arg)) / 2
-        print('ping get', client.netdat.ping)
+        #print('ping get', client.netdat.ping)
     except BaseException as e:
         print('ping except', e)
         return
@@ -749,6 +749,8 @@ class level():
         self.clients = []
         self.entitys = []
         self.grid = []
+        self.lazyenemy = []
+        self.lazyenid = 0
         for y in range(all.game.gridsizy):
             ou = [None] * all.game.gridsizx
             for x in range(all.game.gridsizx):
@@ -772,12 +774,16 @@ class level():
         gm.delete_object = self.delete_object
         gm.player_dead = self.player_dead
         gm.nextlevel = self.nextlevel
+        gm.lazyenemy = self.lazyenemy
+        gm.lazyenid = self.lazyenid
         
     def get_params(self, gm):
         self.grid = gm.grid
         self.players = gm.players
         self.entitys = gm.entitys
         self.cgrid = gm.cgrid
+        self.lazyenemy = gm.lazyenemy
+        self.lazyenid = gm.lazyenid
 
     def reset(self):
         #for i in self.clients:
@@ -900,8 +906,8 @@ def gen_level(level):
     print('gen_level')
 
 def add_player(levelid):
-    if len(levels[levelid].clients) == 0:
-        gen_level(levels[levelid])
+    #if len(levels[levelid].clients) == 0:
+        #gen_level(levels[levelid])
 
     pl = player(x=levels[levelid].start_pos[0] * all.game.cellsizx + 10, y=levels[levelid].start_pos[1] * all.game.cellsizy + 10)
     if all.game.playerweapon != None:
@@ -921,8 +927,8 @@ def get_next_player_level(client):
 
 def change_player_level(levelid, client):
     print('change_player_level')
-    if len(levels[levelid].clients) == 0:
-        gen_level(levels[levelid])
+    #if len(levels[levelid].clients) == 0:
+        #gen_level(levels[levelid])
 
 
     pl = client.playerclass
@@ -1062,19 +1068,19 @@ while True:
                         all.game.entitys[i].remover()
                         del all.game.entitys[i]
                     i += 1
-            all.game.lazyenid += 1
-            if all.game.lazyenid >= len(all.game.lazyenemy):
-                all.game.lazyenid = -1
+            lvl.lazyenid += 1
+            if lvl.lazyenid >= len(lvl.lazyenemy):
+                lvl.lazyenid = -1
             else:
                 try:
-                    if len(all.game.lazyenemy[all.game.lazyenid].net_params) > 5 and all.game.lazyenemy[all.game.lazyenid].net_params[5]:
-                        all.game.lazyenemy[all.game.lazyenid].lock.acquire()
+                    if len(lvl.lazyenemy[lvl.lazyenid].net_params) > 5 and lvl.lazyenemy[lvl.lazyenid].net_params[5]:
+                        lvl.lazyenemy[lvl.lazyenid].lock.acquire()
                     
-                        all.game.lazyenemy[all.game.lazyenid].lazy()
+                        lvl.lazyenemy[lvl.lazyenid].lazy()
 
-                        all.game.lazyenemy[all.game.lazyenid].lock.release()
+                        lvl.lazyenemy[lvl.lazyenid].lock.release()
                     else:
-                        all.game.lazyenemy[all.game.lazyenid].lazy()
+                        lvl.lazyenemy[lvl.lazyenid].lazy()
                 except BaseException as e:
                     print('error in lazy update')
 
